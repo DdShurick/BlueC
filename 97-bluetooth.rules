@@ -1,0 +1,4 @@
+# Run helper every time a Bluetooth device appears
+# On remove actions, bluetoothd should go away by itself
+ACTION=="add|change", ATTR{type}=="bluetooth", RUN+="bluez.sh /sys/class/bluetooth/%s{name}/%k/state"
+ACTION=="remove", ATTR{type}=="bluetooth", RUN+="bluez.sh kill"
