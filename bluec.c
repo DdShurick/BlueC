@@ -1,70 +1,111 @@
 /*Based on a simple systray applet example by Rodrigo De Castro, 2007
 GPL license /usr/share/doc/legal/gpl-2.0.txt.
-BlueC GPL v2, DdShutick 27.03.2016 */
+BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 
-//#include <string.h>
-//#include <stdio.h>
-//#include <stdlib.h>
+#include <string.h>
+//#include <libintl.h>
+//#include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
 //#include <unistd.h>
+//#include <sys/types.h>
+//#include <sys/stat.h>
+//#include <fcntl.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
+//#include <gdk/gdkkeysyms.h>
 //#include <glib/gstdio.h>
+//#include <dirent.h>
+//#include <errno.h>
 
 //#define _(STRING)    gettext(STRING)
 
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-
-GdkPixbuf *bluetooth_pixbuf;
-//GdkPixbuf *on_pixbuf;
-//GdkPixbuf *off_pixbuf;
+char *statusfile, status, infomsg[256];
 
 gboolean Update(gpointer ptr) {
-
-//    fp = (FILE *)popen("df -m `awk -F '=' '/rw/ {print $1}' /sys/fs/aufs/*/br[0-9]*` | sed -n 2p | tr -s ' ' | cut -f 2,4 -d ' '","r");
-//    fgets(meminfo,sizeof meminfo,fp);
-//    pclose(fp);
-
-    //update icon... (sizefree,sizetotal are in MB)
-    if (gtk_status_icon_get_blinking(tray_icon)==TRUE) gtk_status_icon_set_blinking(tray_icon,FALSE);
-/*    percentfree=(sizefree*100)/sizetotal;
-    if (sizefree < 20) {
-        gtk_status_icon_set_from_pixbuf(tray_icon,critical_pixbuf);
-        gtk_status_icon_set_blinking(tray_icon,TRUE);
-    }
-    else if (sizefree < 50) {
-        gtk_status_icon_set_from_pixbuf(tray_icon,critical_pixbuf);
-    }
-    else if (percentfree < 20) {
-        gtk_status_icon_set_from_pixbuf(tray_icon,critical_pixbuf);
-    }
-    else if (percentfree < 45) {
-        gtk_status_icon_set_from_pixbuf(tray_icon,ok_pixbuf);
-	}
-    else if (percentfree < 70) {
-        gtk_status_icon_set_from_pixbuf(tray_icon,good_pixbuf);
-	}
-    else {*/
-    gtk_status_icon_set_from_file(tray_icon, "/usr/share/icons/hicolor/48x48/apps/bluetooth.png");
-//    blueman_pixbuf=gdk_pixbuf_new_from_xpm_data((const char**)blueman_xpm);
-//    gtk_status_icon_set_from_pixbuf(tray_icon,blueman_pixbuf);
-//        gtk_status_icon_set_from_pixbuf(tray_icon,bluetooth_pixbuf);
-//	}
+//check status bluetooth
+	if ((fp = fopen(statusfile,"r"))==NULL) exit(1);
+	status = fgetc(fp);
+	fclose(fp);
+	infomsg[0]=0;
+	strcat(infomsg,"Для настройки bluetooth кликните иконку");
+//update icon...
+//    if (gtk_status_icon_get_blinking(tray_icon)==TRUE) gtk_status_icon_set_blinking(tray_icon,FALSE);
+	
+    if (status=='0') gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_off.png");
+//        gtk_status_icon_set_blinking(tray_icon,TRUE);
+    else if (status=='1') gtk_status_icon_set_from_file(tray_icon, "/usr/share/icons/hicolor/48x48/apps/bluetooth.png");
+//update tooltip...
+	gtk_status_icon_set_tooltip(tray_icon, infomsg);
 	return TRUE;
 }
 
+void  view_popup_menu_onInfo (GtkWidget *menuitem, gpointer userdata)
+	{ 
+		system("echo Info");
+    }
+
+void  view_popup_menu_onFindDevices (GtkWidget *menuitem, gpointer userdata)
+	{
+		system("echo FindDevices");
+	}
+
+void  view_popup_menu_onPushFile (GtkWidget *menuitem, gpointer userdata)
+	{
+		system("echo PushFile");
+	}
+
+void  view_popup_menu_onAbout (GtkWidget *menuitem, gpointer userdata)
+	{
+		system("echo About");
+	}
+
+void  view_popup_menu_onDisconnect (GtkWidget *menuitem, gpointer userdata)
+	{ 
+		system("/usr/bin/rfkill block bluetooth");
+    }
+
+void  view_popup_menu_onReconnect (GtkWidget *menuitem, gpointer userdata)
+	{ 
+		system("/usr/bin/rfkill unblock bluetooth");
+    }
+
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
 {
-    //printf("Clicked on tray icon\n");
-    //system("partview &"); ###sfs
-    system("echo click &");
+    system("echo Setup");
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
 {
-    //printf("Popup menu\n"); ###sfs
-    system("echo menu &");
+	GtkWidget *menu, *menuitem;
+    menu = gtk_menu_new();
+    menuitem = gtk_menu_item_new_with_label("Информация");
+    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onInfo, status_icon);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+    menuitem = gtk_menu_item_new_with_label("Поиск устройств");
+    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onFindDevices, status_icon);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+    menuitem = gtk_menu_item_new_with_label("Передать файлы");
+    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPushFile, status_icon);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+    menuitem = gtk_menu_item_new_with_label("О программе");
+    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onAbout, status_icon);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+    if (status=='1') {
+		menuitem = gtk_menu_item_new_with_label("Отключить bluetooth");
+		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onDisconnect, status_icon);
+    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	}
+    if (status=='0') {
+		menuitem = gtk_menu_item_new_with_label("Включить bluetooth");
+		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onReconnect, status_icon);
+    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	} 
+	gtk_widget_show_all(menu);
+    gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, gdk_event_get_time(NULL));
 }
 
 static GtkStatusIcon *create_tray_icon() {
@@ -78,17 +119,18 @@ static GtkStatusIcon *create_tray_icon() {
 }
 
 int main(int argc, char **argv) {
-    //int len;
-    //char strpupmode[8];
-    GtkStatusIcon *tray_icon;
-
+	
+	gtk_init(&argc, &argv);
+	statusfile = argv[1];
+//    GtkStatusIcon *tray_icon;
+	
 //    setlocale( LC_ALL, "" );
-//    bindtextdomain( "freememapplet_tray", "/usr/share/locale" );
-//    textdomain( "freememapplet_tray" );
+//    bindtextdomain( "bluez_tray", "/usr/share/locale" );
+//    textdomain( "bluez_tray" );
 
-    gtk_init(&argc, &argv);
+    
     tray_icon = create_tray_icon();
-        
+      
     gtk_timeout_add(interval, Update, NULL);
     Update(NULL);
 
