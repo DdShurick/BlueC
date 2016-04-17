@@ -1,0 +1,35 @@
+#!/bin/sh
+hcitool scan | grep -v Scanning | awk '{print $1" "$2" "$3" "$4}' > /tmp/bt_dev.lst
+
+export menu='<vbox>
+<list>
+	<variable>"BT_DEV"</variable>
+	<input file>/tmp/bt_dev.lst</input>
+</list>
+<button ok></button>
+</vbox>'
+eval $(gtkdialog -c --program "menu")
+[ "$BT_DEV" ] || exit
+
+BDA=$(echo "$BT_DEV" | awk '{print $1}')
+sdptool browse $BDA | grep -B5 Channel | egrep 'Channel|0x11' > /tmp/bt_service.lst || exit
+grep '0x11' /tmp/bt_service.lst | tr -d '"' | awk '{print $1" "$2" "$3}' > /tmp/bt_service.name 
+
+export menu='<vbox>
+<list>
+	<variable>BT_SERV</variable>
+	<input file>/tmp/bt_service.name</input>
+</list>
+<button ok></button>
+</vbox>'
+eval $(gtkdialog -c --program "menu")
+[ "$BT_SERV" ] || exit
+
+CH=$(grep -A1 "$BT_SERV" /tmp/bt_service.lst |  awk -F\: '/Channel/ {print $2}')
+case $(grep "$BT_SERV" /tmp/bt_service.lst | awk -F[\(\)] '{print $2}') in
+0x1105) echo "ussp-push ${BDA}@{$CH} LFILE RFILE" ;;
+0x1106) echo "obexfs -b $BDA -B $CH" ;;
+# и т д
+*) echo "$BDA $CH" ;;
+esac
+
