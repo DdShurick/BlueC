@@ -1,70 +1,64 @@
 #!/bin/sh
-hcitool scan | grep -v Scanning | awk '{print $1" "$2" "$3" "$4}' > /tmp/bt_dev.lst
+hcitool scan | grep -v Scanning > /tmp/btdev.lst
 
-export menu='<vbox>
-<list>
-	<variable>"BT_DEV"</variable>
-	<input file>/tmp/bt_dev.lst</input>
-</list>
-<button ok></button>
-</vbox>'
-eval $(gtkdialog -c --program "menu")
-[ "$BT_DEV" ] || exit
-
-BDA=$(echo "$BT_DEV" | awk '{print $1}')
-sdptool browse $BDA > /tmp/${BDA}-info.lst
-awk -F[\(\)] '/0x11/ {print $2}' /tmp/${BDA}-info.lst | sort -u | while read S
+: > /tmp/panel
+awk '{print $1}' /tmp/btdev.lst | while read BDA
 do
-CH=$(grep -A4 $S /tmp/${BDA}-info.lst | awk '/Channel/ {print $2}')
-case $S in
+sdptool browse $BDA > /tmp/${BDA}-info.lst
+echo "<vbox>" >> /tmp/panel
+awk -F[\(\)] '/0x11/ {print $2}' /tmp/${BDA}-info.lst | sort -u | while read S
+	do
+	CH=$(grep -A4 $S /tmp/${BDA}-info.lst | awk '/Channel/ {print $2}')
+	case $S in
 0x1101) echo "<frame Serial Port>
- <button>
+ <button><label>Serial Port</label>
  </button>
-</frame>
-" >> /tmp/panel ;;
+</frame>" >> /tmp/panel ;;
 0x1103) echo "<frame Dialup Networking>
- <button>
+ <button><label>Dialup Networking</label>
  </button>
-</frame>
-" >> /tmp/panel ;;
+</frame>" >> /tmp/panel ;;
 0x1105) echo "<frame OBEX Object Push>
- <button>
+ <button><label>Push file</label>
  </button>
-</frame>
-" >> /tmp/panel 
+</frame>" >> /tmp/panel 
 #Command \"ussp-push ${BDA}@{$CH} LFILE RFILE\""
 ;;
 0x1106) echo "<frame OBEX File Transfer>
- <button>
+ <button><label>Mount</label>
  </button>
-</frame>
-" >> /tmp/panel 
+</frame>" >> /tmp/panel  
 #Command \"obexfs -b $BDA -B $CH\""
 ;;
 0x1112) echo "<frame Headset Audio Gateway>
- <button>
+ <button><label>Audio</label>
  </button>
-</frame>
-" >> /tmp/panel ;;
-0x111f) PANEL="<frame Handsfree Audio Gateway>
- <button>
+</frame>" >> /tmp/panel ;;
+0x111f) echo "<frame Handsfree Audio Gateway>
+ <button><label>Audio</label>
  </button>
-</frame>
-" >> /tmp/panel ;;
+</frame>" >> /tmp/panel ;;
 0x110a) echo "<frame Audio Source>
- <button>
+ <button><label>Audio</label>
  </button>
-</frame>
-" >> /tmp/panel ;;
+</frame>" >> /tmp/panel ;;
 0x110c) echo "<frame AV Remote Target>
- <button>
+ <button><label>AV</label>
  </button>
-</frame>
-" >> /tmp/panel ;;
+</frame>" >> /tmp/panel ;;
 # и т д
-esac
+	esac
+	done
+echo "</vbox>" >> /tmp/panel
 done
 
-export panel="<vbox>
-`cat /tmp/panel` </vbox>"
-gtkdialog -c --program "panel"
+export show_bt="
+<window title=\"БТ-Инфо\" icon-name=\"gtk-about\">
+	<frame Настройки Bluetooth>
+		<notebook labels=\"$(awk '{print " "$2" "$3" "$4" "}' /tmp/btdev.lst | tr '\n' '|')\">
+			$(cat /tmp/panel)
+		</notebook>
+	</frame>
+</window>
+"
+gtkdialog --program=show_bt --center 
