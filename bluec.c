@@ -23,7 +23,7 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-char *statusfile, status, infomsg[256];
+char *statusfile, status, *bldev, infomsg[32];
 
 gboolean Update(gpointer ptr) {
 //check status bluetooth
@@ -31,7 +31,8 @@ gboolean Update(gpointer ptr) {
 	status = fgetc(fp);
 	fclose(fp);
 	infomsg[0]=0;
-	strcat(infomsg,"Для настройки bluetooth кликните иконку");
+	strcat(infomsg," Bluetooth \n    ");
+	strcat(infomsg,bldev);
 //update icon...
 //    if (gtk_status_icon_get_blinking(tray_icon)==TRUE) gtk_status_icon_set_blinking(tray_icon,FALSE);
 	
@@ -48,15 +49,15 @@ void  view_popup_menu_onInfo (GtkWidget *menuitem, gpointer userdata)
 		system("echo Info");
     }
 
-void  view_popup_menu_onFindDevices (GtkWidget *menuitem, gpointer userdata)
-	{
-		system("echo FindDevices");
-	}
+//void  view_popup_menu_onFindDevices (GtkWidget *menuitem, gpointer userdata)
+//	{
+//		system("echo FindDevices");
+//	}
 
-void  view_popup_menu_onPushFile (GtkWidget *menuitem, gpointer userdata)
-	{
-		system("echo PushFile");
-	}
+//void  view_popup_menu_onPushFile (GtkWidget *menuitem, gpointer userdata)
+//	{
+//		system("echo PushFile");
+//	}
 
 void  view_popup_menu_onAbout (GtkWidget *menuitem, gpointer userdata)
 	{
@@ -75,7 +76,7 @@ void  view_popup_menu_onReconnect (GtkWidget *menuitem, gpointer userdata)
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
 {
-    system("echo Setup");
+    system("/usr/bin/bt-connect");
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
@@ -85,12 +86,12 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
     menuitem = gtk_menu_item_new_with_label("Информация");
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onInfo, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-    menuitem = gtk_menu_item_new_with_label("Поиск устройств");
-    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onFindDevices, status_icon);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-    menuitem = gtk_menu_item_new_with_label("Передать файлы");
-    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPushFile, status_icon);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+//    menuitem = gtk_menu_item_new_with_label("Поиск устройств");
+//    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onFindDevices, status_icon);
+//    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+//    menuitem = gtk_menu_item_new_with_label("Передать файлы");
+//    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPushFile, status_icon);
+//    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     menuitem = gtk_menu_item_new_with_label("О программе");
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onAbout, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
@@ -121,7 +122,11 @@ static GtkStatusIcon *create_tray_icon() {
 int main(int argc, char **argv) {
 	
 	gtk_init(&argc, &argv);
-	statusfile = argv[1];
+//	
+//	rfkill = argv[2];
+	statusfile=argv[1];
+	bldev = argv[2];
+	printf(statusfile);
 //    GtkStatusIcon *tray_icon;
 	
 //    setlocale( LC_ALL, "" );
