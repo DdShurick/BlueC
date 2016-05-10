@@ -3,7 +3,7 @@ export DISPLAY=$(/bin/cat /tmp/dsp)
 export process='<pixmap><input file>/usr/share/pixmaps/process.gif</input></pixmap>'
 gtkdialog -c --program=process &
 PID=$!
-hcitool $1 scan | grep -v Scanning > /tmp/btdev.lst
+hcitool $@ scan | grep -v Scanning > /tmp/btdev.lst
 : > /tmp/panel
 awk '{print $1}' /tmp/btdev.lst | while read BDA
 do

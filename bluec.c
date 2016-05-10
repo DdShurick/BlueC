@@ -23,7 +23,7 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-char *statusfile, status, *bldev, infomsg[32];
+char *statusfile, *bldev, status, infomsg[32], cmd[32];
 
 gboolean Update(gpointer ptr) {
 //check status bluetooth
@@ -76,7 +76,7 @@ void  view_popup_menu_onReconnect (GtkWidget *menuitem, gpointer userdata)
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
 {
-    system("/usr/bin/bt-connect");
+    system(cmd);
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
@@ -122,11 +122,13 @@ static GtkStatusIcon *create_tray_icon() {
 int main(int argc, char **argv) {
 	
 	gtk_init(&argc, &argv);
-//	
-//	rfkill = argv[2];
+
 	statusfile=argv[1];
 	bldev = argv[2];
-	printf(statusfile);
+	cmd[0]=0;
+	strcat(cmd,"/usr/bin/bt-connect");
+	strcat(cmd," -i ");
+	strcat(cmd,argv[2]);
 //    GtkStatusIcon *tray_icon;
 	
 //    setlocale( LC_ALL, "" );
