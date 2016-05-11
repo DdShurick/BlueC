@@ -23,7 +23,7 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-char *statusfile, *bldev, status, infomsg[32], cmd[32];
+char *statusfile, *bldev, status, infomsg[32], cmd[32], label_on[24], label_off[24];
 
 gboolean Update(gpointer ptr) {
 //check status bluetooth
@@ -66,12 +66,18 @@ void  view_popup_menu_onAbout (GtkWidget *menuitem, gpointer userdata)
 
 void  view_popup_menu_onDisconnect (GtkWidget *menuitem, gpointer userdata)
 	{ 
-		system("/usr/bin/rfkill block bluetooth");
+		if ((fp = fopen(statusfile,"w"))==NULL) exit(1);
+		status = fputc('0',fp);
+		fclose(fp);
+//		system("/usr/bin/rfkill block bluetooth");
     }
 
 void  view_popup_menu_onReconnect (GtkWidget *menuitem, gpointer userdata)
 	{ 
-		system("/usr/bin/rfkill unblock bluetooth");
+		if ((fp = fopen(statusfile,"w"))==NULL) exit(1);
+		status = fputc('1',fp);
+		fclose(fp);
+//		system("/usr/bin/rfkill unblock bluetooth");
     }
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
@@ -96,12 +102,12 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onAbout, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     if (status=='1') {
-		menuitem = gtk_menu_item_new_with_label("Отключить bluetooth");
+		menuitem = gtk_menu_item_new_with_label(label_off);
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onDisconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	}
     if (status=='0') {
-		menuitem = gtk_menu_item_new_with_label("Включить bluetooth");
+		menuitem = gtk_menu_item_new_with_label(label_on);
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onReconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	} 
@@ -129,6 +135,12 @@ int main(int argc, char **argv) {
 	strcat(cmd,"/usr/bin/bt-connect");
 	strcat(cmd," -i ");
 	strcat(cmd,argv[2]);
+	label_on[0]=0;
+	strcat(label_on,"Включить ");
+	strcat(label_on,argv[2]);
+	label_off[0]=0;
+	strcat(label_off,"Отключить ");
+	strcat(label_off,argv[2]);
 //    GtkStatusIcon *tray_icon;
 	
 //    setlocale( LC_ALL, "" );
