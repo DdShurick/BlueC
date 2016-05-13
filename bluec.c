@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 	cmd[0]=0;
 	strcat(cmd,"/usr/bin/bt-connect");
 	strcat(cmd," -i ");
-	strcat(cmd,argv[2]);
+	strcat(cmd,argv[1]);
 	label_on[0]=0;
 	strcat(label_on,"Включить ");
 	strcat(label_on,argv[1]);
