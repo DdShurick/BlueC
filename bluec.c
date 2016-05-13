@@ -144,10 +144,10 @@ int main(int argc, char **argv) {
 	strcat(cmd,argv[2]);
 	label_on[0]=0;
 	strcat(label_on,"Включить ");
-	strcat(label_on,argv[2]);
+	strcat(label_on,argv[1]);
 	label_off[0]=0;
 	strcat(label_off,"Отключить ");
-	strcat(label_off,argv[2]);
+	strcat(label_off,argv[1]);
 //    GtkStatusIcon *tray_icon;
 	
 //    setlocale( LC_ALL, "" );
