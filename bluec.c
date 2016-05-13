@@ -23,7 +23,7 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-char *statusfile, *bldev, status, infomsg[32], cmd[32], label_on[24], label_off[24];
+char statusfile[42], *bldev, status, infomsg[32], cmd[32], label_on[24], label_off[24];
 
 gboolean Update(gpointer ptr) {
 //check status bluetooth
@@ -44,10 +44,10 @@ gboolean Update(gpointer ptr) {
 	return TRUE;
 }
 
-void  view_popup_menu_onInfo (GtkWidget *menuitem, gpointer userdata)
-	{ 
-		system("echo Info");
-    }
+//void  view_popup_menu_onInfo (GtkWidget *menuitem, gpointer userdata)
+//	{ 
+//		system("echo Info");
+//    }
 
 //void  view_popup_menu_onFindDevices (GtkWidget *menuitem, gpointer userdata)
 //	{
@@ -61,7 +61,7 @@ void  view_popup_menu_onInfo (GtkWidget *menuitem, gpointer userdata)
 
 void  view_popup_menu_onAbout (GtkWidget *menuitem, gpointer userdata)
 	{
-		system("echo About");
+		system("echo \"Bluez-tray-0,1\"");
 	}
 
 void  view_popup_menu_onDisconnect (GtkWidget *menuitem, gpointer userdata)
@@ -89,9 +89,9 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 {
 	GtkWidget *menu, *menuitem;
     menu = gtk_menu_new();
-    menuitem = gtk_menu_item_new_with_label("Информация");
-    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onInfo, status_icon);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+//    menuitem = gtk_menu_item_new_with_label("Информация");
+//    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onInfo, status_icon);
+//    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 //    menuitem = gtk_menu_item_new_with_label("Поиск устройств");
 //    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onFindDevices, status_icon);
 //    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
@@ -127,10 +127,17 @@ static GtkStatusIcon *create_tray_icon() {
 
 int main(int argc, char **argv) {
 	
+	if (argc != 3) { printf ("%s\n","Usage: bluez-tray hci0 rfkill0"); exit(1); }
+	
 	gtk_init(&argc, &argv);
 
-	statusfile=argv[1];
-	bldev = argv[2];
+	statusfile[0]=0;
+	strcat(statusfile,"/sys/class/bluetooth/");
+	strcat(statusfile,argv[1]);
+	strcat(statusfile,"/");
+	strcat(statusfile,argv[2]);
+	strcat(statusfile,"/state");
+	bldev = argv[1];
 	cmd[0]=0;
 	strcat(cmd,"/usr/bin/bt-connect");
 	strcat(cmd," -i ");
