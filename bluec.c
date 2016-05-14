@@ -23,7 +23,7 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-char statusfile[42], addressfile[36], *btdev, state, btupdown[16], addr[20], infomsg[64], cmd[32], label_on[24], label_off[24];
+char statusfile[42], addressfile[36], *btdev, state, btupdown[20], addr[20], infomsg[72], cmd[32], label_on[24], label_off[24];
 
 gboolean Update(gpointer ptr) {
 //check status bluetooth
@@ -38,9 +38,9 @@ gboolean Update(gpointer ptr) {
 	fgets(btupdown,sizeof btupdown,fp);
 	pclose(fp);
 	infomsg[0]=0;
-	strcat(infomsg," Bluetooth  ");
+	strcat(infomsg," Bluetooth: ");
 	strcat(infomsg,btdev);
-	strcat(infomsg," \n ");
+	strcat(infomsg,"\n BD Address:\n ");
 	strcat(infomsg,addr);
 	strcat(infomsg,btupdown);
 //update icon...

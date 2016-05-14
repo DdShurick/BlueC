@@ -1,4 +1,5 @@
 #!/bin/sh
+[ $(hcitool $@ dev) ] || exit
 export DISPLAY=$(/bin/cat /tmp/dsp)
 export process='<pixmap><input file>/usr/share/pixmaps/process.gif</input></pixmap>'
 gtkdialog -c --program=process &
