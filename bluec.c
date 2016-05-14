@@ -23,24 +23,36 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-char statusfile[42], *bldev, status, infomsg[32], cmd[32], label_on[24], label_off[24];
+char statusfile[42], addressfile[36], *btdev, state, btupdown[16], addr[20], infomsg[64], cmd[32], label_on[24], label_off[24];
 
 gboolean Update(gpointer ptr) {
 //check status bluetooth
 	if ((fp = fopen(statusfile,"r"))==NULL) exit(1);
-	status = fgetc(fp);
+	state = fgetc(fp);
 	fclose(fp);
+//Infomsg
+	if ((fp = fopen(addressfile,"r"))==NULL) exit(1);
+	fgets(addr,sizeof(addr),fp);
+	fclose(fp);
+	fp = popen("/usr/sbin/hciconfig | /bin/egrep 'UP|DOWN' | tr -d '\t'","r");
+	fgets(btupdown,sizeof btupdown,fp);
+	pclose(fp);
 	infomsg[0]=0;
-	strcat(infomsg," Bluetooth \n    ");
-	strcat(infomsg,bldev);
+	strcat(infomsg," Bluetooth  ");
+	strcat(infomsg,btdev);
+	strcat(infomsg," \n ");
+	strcat(infomsg,addr);
+	strcat(infomsg,btupdown);
 //update icon...
 //    if (gtk_status_icon_get_blinking(tray_icon)==TRUE) gtk_status_icon_set_blinking(tray_icon,FALSE);
 	
-    if (status=='0') gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_off.png");
-//        gtk_status_icon_set_blinking(tray_icon,TRUE);
-    else if (status=='1') gtk_status_icon_set_from_file(tray_icon, "/usr/share/icons/hicolor/48x48/apps/bluetooth.png");
+	if (state=='0') gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_off.png");
+	else if (state=='1') {
+    	if (strstr(btupdown,"DOWN")) gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth.png");
+    	else gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_on.png");
+	}
 //update tooltip...
-	gtk_status_icon_set_tooltip(tray_icon, infomsg);
+	gtk_status_icon_set_tooltip(tray_icon,infomsg);
 	return TRUE;
 }
 
@@ -67,7 +79,7 @@ void  view_popup_menu_onAbout (GtkWidget *menuitem, gpointer userdata)
 void  view_popup_menu_onDisconnect (GtkWidget *menuitem, gpointer userdata)
 	{ 
 		if ((fp = fopen(statusfile,"w"))==NULL) exit(1);
-		status = fputc('0',fp);
+		state = fputc('0',fp);
 		fclose(fp);
 //		system("/usr/bin/rfkill block bluetooth");
     }
@@ -75,7 +87,7 @@ void  view_popup_menu_onDisconnect (GtkWidget *menuitem, gpointer userdata)
 void  view_popup_menu_onReconnect (GtkWidget *menuitem, gpointer userdata)
 	{ 
 		if ((fp = fopen(statusfile,"w"))==NULL) exit(1);
-		status = fputc('1',fp);
+		state = fputc('1',fp);
 		fclose(fp);
 //		system("/usr/bin/rfkill unblock bluetooth");
     }
@@ -101,12 +113,12 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
     menuitem = gtk_menu_item_new_with_label("О программе");
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onAbout, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-    if (status=='1') {
+    if (state=='1') {
 		menuitem = gtk_menu_item_new_with_label(label_off);
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onDisconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	}
-    if (status=='0') {
+    if (state=='0') {
 		menuitem = gtk_menu_item_new_with_label(label_on);
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onReconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
@@ -130,6 +142,7 @@ int main(int argc, char **argv) {
 	if (argc != 3) { printf ("%s\n","Usage: bluez-tray hci0 rfkill0"); exit(1); }
 	
 	gtk_init(&argc, &argv);
+	btdev = argv[1];
 
 	statusfile[0]=0;
 	strcat(statusfile,"/sys/class/bluetooth/");
@@ -137,14 +150,21 @@ int main(int argc, char **argv) {
 	strcat(statusfile,"/");
 	strcat(statusfile,argv[2]);
 	strcat(statusfile,"/state");
-	bldev = argv[1];
+
+	addressfile[0]=0;
+	strcat(addressfile,"/sys/class/bluetooth/");
+	strcat(addressfile,argv[1]);
+	strcat(addressfile,"/address");
+
 	cmd[0]=0;
 	strcat(cmd,"/usr/bin/bt-connect");
 	strcat(cmd," -i ");
 	strcat(cmd,argv[1]);
+
 	label_on[0]=0;
 	strcat(label_on,"Включить ");
 	strcat(label_on,argv[1]);
+
 	label_off[0]=0;
 	strcat(label_off,"Отключить ");
 	strcat(label_off,argv[1]);
