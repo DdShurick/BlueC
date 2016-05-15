@@ -157,8 +157,7 @@ int main(int argc, char **argv) {
 	strcat(addressfile,"/address");
 
 	cmd[0]=0;
-	strcat(cmd,"/usr/bin/bt-connect");
-	strcat(cmd," -i ");
+	strcat(cmd,"/usr/bin/bt-connect ");
 	strcat(cmd,argv[1]);
 
 	label_on[0]=0;

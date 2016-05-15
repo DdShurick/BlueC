@@ -1,18 +1,23 @@
 #!/bin/sh
+[ $1 ] || exit
+[ "$(cat /sys/class/bluetooth/$1/rfkill*/state)" = 0 ] && /usr/bin/rfkill unblock $1
+[ "$(/usr/sbin/hciconfig | grep DOWN)" ] && /usr/sbin/hciconfig $1 up
+[ "$(hcitool -i $1 dev)" ] || exit
 export DISPLAY=$(/bin/cat /tmp/dsp)
 export process='<pixmap><input file>/usr/share/pixmaps/process.gif</input></pixmap>'
 gtkdialog -c --program=process &
 PID=$!
-hcitool $@ scan | grep -v Scanning > /tmp/btdev.lst
+hcitool -i $1 scan | grep -v Scanning > /tmp/btdev.lst
 : > /tmp/panel
-awk '{print $1}' /tmp/btdev.lst | while read BDA
-do
-sdptool browse $BDA > /tmp/${BDA}-info.lst || continue
-echo "<vbox>" >> /tmp/panel
-awk -F[\(\)] '/0x11/ {print $2}' /tmp/${BDA}-info.lst | sort -u | while read S
+if [ -s /tmp/btdev.lst ];then
+ awk '{print $1}' /tmp/btdev.lst | while read BDA
 	do
-	CH=$(grep -A4 $S /tmp/${BDA}-info.lst | awk '/Channel/ {print $2}')
-	case $S in
+	 sdptool browse $BDA > /tmp/${BDA}-info.lst || continue
+	 echo "<vbox>" >> /tmp/panel
+	 awk -F[\(\)] '/0x11/ {print $2}' /tmp/${BDA}-info.lst | sort -u | while read S
+		do
+		CH=$(grep -A4 $S /tmp/${BDA}-info.lst | awk '/Channel/ {print $2}')
+		case $S in
 0x1101) echo "<frame Serial Port>
  <button><label>Serial Port</label>
  </button>
@@ -50,12 +55,12 @@ awk -F[\(\)] '/0x11/ {print $2}' /tmp/${BDA}-info.lst | sort -u | while read S
  </button>
 </frame>" >> /tmp/panel ;;
 # и т д
-	esac
+		esac
+		done
+	 echo "</vbox>" >> /tmp/panel
 	done
-echo "</vbox>" >> /tmp/panel
-done
 
-export show_bt="
+ export show_bt="
 <window title=\"БТ-Инфо\" icon-name=\"gtk-about\">
 	<frame Настройки Bluetooth>
 		<notebook labels=\"$(awk '{print " "$2" "$3" "$4" "}' /tmp/btdev.lst | tr '\n' '|')\">
@@ -63,6 +68,18 @@ export show_bt="
 		</notebook>
 	</frame>
 </window>
-"
+" 
+else
+export show_bt="
+<window title=\"БТ-Инфо\" icon-name=\"gtk-about\">
+	<vbox>
+		<text>
+			<label>Устройств Bluetooth не обнаружено</label>
+		</text>
+		<button ok></button>
+	</vbox>
+</window>
+"	
+fi
 /bin/kill $PID
-gtkdialog --program=show_bt --center 
+gtkdialog --program=show_bt --center
