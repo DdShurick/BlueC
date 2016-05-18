@@ -17,7 +17,6 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 //#include <glib/gstdio.h>
 //#include <dirent.h>
 //#include <errno.h>
-
 //#define _(STRING)    gettext(STRING)
 
 GtkStatusIcon *tray_icon;
@@ -73,7 +72,23 @@ gboolean Update(gpointer ptr) {
 
 void  view_popup_menu_onAbout (GtkWidget *menuitem, gpointer userdata)
 	{
-		system("echo \"Bluez-tray-0,1\"");
+//		system("echo \"Bluez-tray-0,1\"");
+		GtkWidget *window, *button;
+
+		window = gtk_window_new(GTK_WINDOW_POPUP);
+		gtk_window_set_position(GTK_WINDOW(window),GTK_WIN_POS_CENTER);
+		gtk_window_set_default_size(GTK_WINDOW(window), 200, 130);
+		gtk_container_set_border_width (GTK_CONTAINER(window), 4);
+		
+		button = gtk_button_new_with_label("\"Bluez-tray-0,1\"\n\n    GPL v2\n\n  DdShurick.");
+		g_signal_connect_swapped(G_OBJECT(button),"clicked",G_CALLBACK(gtk_widget_destroy),G_OBJECT(window));
+		gtk_container_add(GTK_CONTAINER(window), button);
+//		g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
+//		GdkColor color;
+//    	gdk_color_parse("#00ffff", &color);
+//    	gtk_widget_modify_bg(GTK_WIDGET(window), GTK_STATE_NORMAL, &color);
+		gtk_widget_show_all(window);
+
 	}
 
 void  view_popup_menu_onDisconnect (GtkWidget *menuitem, gpointer userdata)
