@@ -1,6 +1,6 @@
 /*Based on a simple systray applet example by Rodrigo De Castro, 2007
 GPL license /usr/share/doc/legal/gpl-2.0.txt.
-BlueZ_tray GPL v2, DdShutick 07.04.2016 */
+BlueZ_tray GPL v2, DdShutick 18.05.2016 */
 
 #include <string.h>
 //#include <libintl.h>
@@ -22,9 +22,10 @@ BlueZ_tray GPL v2, DdShutick 07.04.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
 FILE *fp;
-char statusfile[42], addressfile[36], *btdev, state, btupdown[20], addr[20], infomsg[72], cmd[32], label_on[24], label_off[24];
+char statusfile[42], addressfile[36], *btdev, state, btupdown[23], addr[20], infomsg[72], cmd[32], label_on[24], label_off[24], scancmd[10]="hciconfig ";
 
 gboolean Update(gpointer ptr) {
+	
 //check status bluetooth
 	if ((fp = fopen(statusfile,"r"))==NULL) exit(1);
 	state = fgetc(fp);
@@ -47,8 +48,19 @@ gboolean Update(gpointer ptr) {
 	
 	if (state=='0') gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_off.png");
 	else if (state=='1') {
-    	if (strstr(btupdown,"DOWN")) gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth.png");
-    	else gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_on.png");
+    	if (strstr(btupdown,"DOWN")) gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_off.png");
+    	else if (strstr(btupdown,"PSCAN ISCAN")) { 
+			gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth_on.png");
+			scancmd[14]='\0';
+			strcat (scancmd," pscan\n");
+//			printf(scancmd);
+		}
+    	else {
+			gtk_status_icon_set_from_file(tray_icon,"/usr/share/icons/hicolor/48x48/apps/bluetooth.png");
+			scancmd[14]='\0';
+			strcat (scancmd," piscan\n");
+//			printf(scancmd);
+		}
 	}
 //update tooltip...
 	gtk_status_icon_set_tooltip(tray_icon,infomsg);
@@ -60,15 +72,15 @@ gboolean Update(gpointer ptr) {
 //		system("echo Info");
 //    }
 
-//void  view_popup_menu_onFindDevices (GtkWidget *menuitem, gpointer userdata)
-//	{
-//		system("echo FindDevices");
-//	}
+void  view_popup_menu_onPscan (GtkWidget *menuitem, gpointer userdata)
+	{
+		system(scancmd);
+	}
 
-//void  view_popup_menu_onPushFile (GtkWidget *menuitem, gpointer userdata)
-//	{
-//		system("echo PushFile");
-//	}
+void  view_popup_menu_onPiscan (GtkWidget *menuitem, gpointer userdata)
+	{
+		system(scancmd);
+	}
 
 void  view_popup_menu_onAbout (GtkWidget *menuitem, gpointer userdata)
 	{
@@ -137,7 +149,17 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 		menuitem = gtk_menu_item_new_with_label(label_on);
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onReconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-	} 
+	}
+	if (strstr(btupdown,"PSCAN ISCAN")) {
+		menuitem = gtk_menu_item_new_with_label("Отключить видимость");
+		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPscan, status_icon);
+    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	}
+	else {
+		menuitem = gtk_menu_item_new_with_label("Включить видимость");
+		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPiscan, status_icon);
+    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	}
 	gtk_widget_show_all(menu);
     gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, gdk_event_get_time(NULL));
 }
@@ -174,6 +196,8 @@ int main(int argc, char **argv) {
 	cmd[0]=0;
 	strcat(cmd,"/usr/bin/bt-connect ");
 	strcat(cmd,argv[1]);
+	
+	strcat(scancmd,argv[1]);
 
 	label_on[0]=0;
 	strcat(label_on,"Включить ");
