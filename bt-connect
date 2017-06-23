@@ -169,6 +169,39 @@ rm -f /tmp/go.sh
 }
 export -f DISCONNECT_SERIAL
 
+OBEX_RECEIVE()
+{
+# здесь надо обработать наличие запущенного obexpushd, если запущен, то выключаем, если не запущен - включаем
+obexpushd -n -B -o ~/Downloads
+#с каталогом для приема файлов желательно определиться. стоит ли делать каталог bluetooth-share или подобный
+}
+export -f OBEX_RECEIVE
+
+OBEX_PUSH()
+{
+# Открыть диалог выбора файлов
+# получить данные об устройстве на который отправляем (mac, номер канала)
+# команда отправки файла:
+ussp-push $mac@$channel $local_file $remote_file
+#возможно надо индикатор отправки или сообщение о том что файлы отправлены успешно.
+}
+export -f OBEX_PUSH
+
+OBEX_MOUNT()
+{
+#Здесь нужна проверка, если уже смонтировано, то размонтируем.
+umount /mnt/bluetooth 2>> /tmp/bt-error.log #нужна проверка что размонтирование успешно, т.к. возможно будут открытые файлы и не размонтируется
+#алгоритм взят из Puppyrus bt-manager
+hciconfig hci0 reset
+mkdir /mnt/bluetooth
+obexfs  -b $mac1 -B $channel /mnt/bluetoth 2>> /tmp/bt-error.log
+# второй вариант монтирования из Puppyrus bt-manager
+#obexfs -b $mac1 -B $channel -N /mnt/bluetoth 2>> /tmp/bt-error.log
+# третий вариант монтирования из Puppyrus bt-manager
+#obexftp -b $mac1 -l 2>> /tmp/bt-error.log
+}
+export -f OBEX_MOUNT
+
 [ "$(hcitool -i $1 dev)" ] || err_msg "Bluetooth devices not found"
 
 export process='<pixmap><input file>/usr/share/pixmaps/process.gif</input></pixmap>'
@@ -200,12 +233,17 @@ do
 </frame>" >> /tmp/panel ;;
 0x1105) echo "<frame OBEX Object Push>
  <button><label>Push file</label>
+ 	<action>OBEX_PUSH &</action>
+ </button>
+ <button><label>Start/Stop reseive files</label>
+ 	<action>OBEX_RECEIVE &</action>
  </button>
 </frame>" >> /tmp/panel 
 #Command \"ussp-push ${BDA}@{$CH} LFILE RFILE\""
 ;;
 0x1106) echo "<frame OBEX File Transfer>
- <button><label>Mount file system</label>
+ <button><label>Mount\Unmount file system</label>
+ 	<action>OBEX_MOUNT &</action>
  </button>
 </frame>" >> /tmp/panel  
 #Command \"obexfs -b $BDA -B $CH\""
