@@ -1,33 +1,24 @@
 /*Based on a simple systray applet example by Rodrigo De Castro, 2007
 GPL license /usr/share/doc/legal/gpl-2.0.txt.
-BlueZ_tray GPL v2, DdShutick 18.05.2016 */
+Bluez-tray GPL v2, DdShutick 18.05.2016 */
 
 #include <string.h>
-//#include <libintl.h>
-//#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <unistd.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
-//#include <fcntl.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
-//#include <gdk/gdkkeysyms.h>
-//#include <glib/gstdio.h>
-//#include <dirent.h>
-//#include <errno.h>
-//#define _(STRING)    gettext(STRING)
 
 GtkStatusIcon *tray_icon;
-unsigned int interval = 10000; /*update interval in milliseconds*/
+unsigned int interval = 1000; /*update interval in milliseconds*/
 FILE *fp;
-char statusfile[42], addressfile[36], *btdev, state, btupdown[23], addr[20], infomsg[72], cmd[32], label_on[24], label_off[24], scancmd[10]="hciconfig ";
+char statefile[42], hardfile[42], addressfile[36], *btdev, btupdown[23], addr[20], infomsg[72], cmd[32], label_on[24], label_off[24], scancmd[10]="hciconfig ", hcicmd[25];
+int state;
 
 gboolean Update(gpointer ptr) {
 	
-//check status bluetooth
-	if ((fp = fopen(statusfile,"r"))==NULL) exit(1);
+/*check status bluetooth
+soft blocked*/	
+	if ((fp = fopen(statefile,"r"))==NULL) exit(1);
 	state = fgetc(fp);
 	fclose(fp);
 	
@@ -35,19 +26,25 @@ gboolean Update(gpointer ptr) {
 	if ((fp = fopen(addressfile,"r"))==NULL) exit(1);
 	fgets(addr,sizeof(addr),fp);
 	fclose(fp);
-	fp = popen("/usr/bin/hciconfig | /bin/egrep 'UP|DOWN' | tr -d '\t'","r");
+	fp = popen("/usr/sbin/hciconfig | /bin/egrep 'UP|DOWN' | tr -d '\t'","r");
 	fgets(btupdown,sizeof btupdown,fp);
 	pclose(fp);
 	infomsg[0]=0;
 	strcat(infomsg," Bluetooth: ");
 	strcat(infomsg,btdev);
-	strcat(infomsg,"\n BD Address:\n ");
-	strcat(infomsg,addr);
-	strcat(infomsg,btupdown);
+	
+	
 //update icon...
 //    if (gtk_status_icon_get_blinking(tray_icon)==TRUE) gtk_status_icon_set_blinking(tray_icon,FALSE);
 	
-	if (state=='0') gtk_status_icon_set_from_file(tray_icon,"/usr/share/pixmaps/bluetooth_off.png");
+	if (state=='0') {
+		gtk_status_icon_set_from_file(tray_icon,"/usr/share/pixmaps/bluetooth_off.png");
+/*check status bluetooth
+hard blocked*/
+		if ((fp = fopen(hardfile,"r"))==NULL) exit(1);
+		if (fgetc(fp)=='1') strcat(infomsg,"\n Блоктрован аппаратно \n");
+		fclose(fp);
+	}
 	else if (state=='1') {
     	if (strstr(btupdown,"DOWN")) gtk_status_icon_set_from_file(tray_icon,"/usr/share/pixmaps/bluetooth_off.png");
     	else if (strstr(btupdown,"PSCAN ISCAN")) { 
@@ -62,6 +59,9 @@ gboolean Update(gpointer ptr) {
 			strcat (scancmd," piscan\n");
 //			printf(scancmd);
 		}
+	strcat(infomsg,"\n BD Address:\n ");
+	strcat(infomsg,addr);
+	strcat(infomsg,btupdown);
 	}
 
 //update tooltip...
@@ -105,20 +105,14 @@ void  view_popup_menu_About (GtkWidget *menuitem, gpointer userdata)
 
 	}
 
-void  view_popup_menu_Disconnect (GtkWidget *menuitem, gpointer userdata) //Переписать
+void  view_popup_menu_Disconnect (GtkWidget *menuitem, gpointer userdata)
 	{ 
-		if ((fp = fopen(statusfile,"w"))==NULL) exit(1);
-		state = fputc('0',fp);
-		fclose(fp);
-//		system("/usr/bin/rfkill block bluetooth");
+		system(strcat(hcicmd," down"));
     }
 
-void  view_popup_menu_Сonnect (GtkWidget *menuitem, gpointer userdata) //Переписать
+void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 	{ 
-		if ((fp = fopen(statusfile,"w"))==NULL) exit(1);
-		state = fputc('1',fp);
-		fclose(fp);
-//		system("/usr/bin/rfkill unblock bluetooth");
+		system(strcat(hcicmd," up"));
     }
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
@@ -142,26 +136,27 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
     menuitem = gtk_menu_item_new_with_label("О программе");
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_About, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-    if (state=='1') {
+    if (strstr(btupdown,"UP")) {
 		menuitem = gtk_menu_item_new_with_label(label_off);
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Disconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-	}
-    if (state=='0') {
+    	if (strstr(btupdown,"PSCAN ISCAN")) {
+			menuitem = gtk_menu_item_new_with_label("Отключить видимость");
+			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPscan, status_icon);
+    		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+		}
+		else {
+			menuitem = gtk_menu_item_new_with_label("Включить видимость");
+			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPiscan, status_icon);
+    		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+		}
+	} 
+    if (strstr(btupdown,"DOWN")) {
 		menuitem = gtk_menu_item_new_with_label(label_on);
-		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Сonnect, status_icon);
+		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Connect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	}
-	if (strstr(btupdown,"PSCAN ISCAN")) {
-		menuitem = gtk_menu_item_new_with_label("Отключить видимость");
-		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPscan, status_icon);
-    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-	}
-	else {
-		menuitem = gtk_menu_item_new_with_label("Включить видимость");
-		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPiscan, status_icon);
-    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-	}
+	
 	gtk_widget_show_all(menu);
     gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, gdk_event_get_time(NULL));
 }
@@ -183,14 +178,20 @@ int main(int argc, char **argv) {
 	gtk_init(&argc, &argv);
 	btdev = argv[1];
 
-	statusfile[0]=0;
-	strcat(statusfile,"/sys/class/bluetooth/");
-	strcat(statusfile,argv[1]);
-	strcat(statusfile,"/");
-	strcat(statusfile,argv[2]);
-	strcat(statusfile,"/state");
+	hardfile[0]=0;
+	strcat(hardfile,"/sys/class/bluetooth/");
+	strcat(hardfile,argv[1]);
+	strcat(hardfile,"/");
+	strcat(hardfile,argv[2]);
+	strcat(hardfile,"/hard");
 
-	
+	statefile[0]=0;
+	strcat(statefile,"/sys/class/bluetooth/");
+	strcat(statefile,argv[1]);
+	strcat(statefile,"/");
+	strcat(statefile,argv[2]);
+	strcat(statefile,"/state");
+
 
 	addressfile[0]=0;
 	strcat(addressfile,"/sys/class/bluetooth/");
@@ -200,6 +201,10 @@ int main(int argc, char **argv) {
 	cmd[0]=0;
 	strcat(cmd,"/usr/bin/bt-connect ");
 	strcat(cmd,argv[1]);
+	
+	hcicmd[0]=0;
+	strcat(hcicmd,"/usr/sbin/hciconfig ");
+	strcat(hcicmd,argv[1]);
 	
 	strcat(scancmd,argv[1]);
 
