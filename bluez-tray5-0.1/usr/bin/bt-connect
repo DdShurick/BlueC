@@ -1,0 +1,94 @@
+#!/bin/sh
+[ $1 ] || exit
+export DISPLAY=$(/bin/cat /tmp/dsp)
+[ "$(cat /sys/class/bluetooth/$1/rfkill*/state)" = 0 ] && /usr/bin/rfkill unblock $1
+[ "$(/usr/bin/hciconfig | grep DOWN)" ] && /usr/sbin/hciconfig $1 up
+
+err_msg () {
+export show_bt="
+<window title=\"БТ-Инфо\" icon-name=\"gtk-about\">
+	<vbox>
+		<text>
+			<label>$1</label>
+		</text>
+		<button ok></button>
+	</vbox>
+</window>
+"
+[ "$PID" ] && kill $PID
+gtkdialog --program=show_bt --center
+exit 1
+}
+
+[ "$(hcitool -i $1 dev)" ] || err_msg "Устройств Bluetooth не обнаружено"
+
+export process='<pixmap><input file>/usr/share/pixmaps/process.gif</input></pixmap>'
+gtkdialog -c --program=process &
+PID=$!
+
+hcitool -i $1 scan | grep -v Scanning > /tmp/btdev.lst
+: > /tmp/panel
+[ -s /tmp/btdev.lst ] || err_msg "Устройств Bluetooth не обнаружено"
+ awk '{print $1}' /tmp/btdev.lst | while read BDA
+do
+ sdptool browse $BDA > /tmp/${BDA}-info.lst || continue
+ echo "<vbox>" >> /tmp/panel
+ awk -F[\(\)] '/0x11/ {print $2}' /tmp/${BDA}-info.lst | sort -u | while read S
+	do
+	 CH=$(grep -A4 $S /tmp/${BDA}-info.lst | awk '/Channel/ {print $2}')
+		case $S in
+0x1101) echo "<frame Serial Port>
+ <button><label>Serial Port</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x1103) echo "<frame Dialup Networking>
+ <button><label>Dialup Networking</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x1105) echo "<frame OBEX Object Push>
+ <button><label>Push file</label>
+ </button>
+</frame>" >> /tmp/panel 
+#Command \"ussp-push ${BDA}@{$CH} LFILE RFILE\""
+;;
+0x1106) echo "<frame OBEX File Transfer>
+ <button><label>Mount</label>
+ </button>
+</frame>" >> /tmp/panel  
+#Command \"obexfs -b $BDA -B $CH\""
+;;
+0x1112) echo "<frame Headset Audio Gateway>
+ <button><label>Audio</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x111f) echo "<frame Handsfree Audio Gateway>
+ <button><label>Audio</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x110a) echo "<frame Audio Source>
+ <button><label>Audio</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x110c) echo "<frame AV Remote Target>
+ <button><label>AV</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+# и т д
+		esac
+	done
+ echo "</vbox>" >> /tmp/panel
+done
+
+ export show_bt="
+<window title=\"БТ-Инфо\" icon-name=\"gtk-about\">
+	<frame Настройки Bluetooth>
+		<notebook labels=\"$(awk '{print " "$2" "$3" "$4" "}' /tmp/btdev.lst | tr '\n' '|')\">
+			$(cat /tmp/panel)
+		</notebook>
+	</frame>
+</window>
+" 
+[ -s /tmp/panel ] || err_msg "Сервисы Bluetooth не обнаружены"
+
+/bin/kill $PID
+gtkdialog --program=show_bt --center || err_msg "Ошибка"
