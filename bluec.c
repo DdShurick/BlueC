@@ -1,10 +1,10 @@
 /*Based on a simple systray applet example by Rodrigo De Castro, 2007
 GPL license /usr/share/doc/legal/gpl-2.0.txt.
-BlueZ_tray GPL v2, DdShutick 18.05.2016 */
+BlueZ_tray GPL v2, DdShutick 26.06.2017 */
 
 #include <string.h>
-//#include <libintl.h>
-//#include <locale.h>
+#include <libintl.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 //#include <unistd.h>
@@ -17,7 +17,7 @@ BlueZ_tray GPL v2, DdShutick 18.05.2016 */
 //#include <glib/gstdio.h>
 //#include <dirent.h>
 //#include <errno.h>
-//#define _(STRING)    gettext(STRING)
+#define _(String)    gettext(String)
 
 GtkStatusIcon *tray_icon;
 unsigned int interval = 10000; /*update interval in milliseconds*/
@@ -39,9 +39,9 @@ gboolean Update(gpointer ptr) {
 	fgets(btupdown,sizeof btupdown,fp);
 	pclose(fp);
 	infomsg[0]=0;
-	strcat(infomsg," Bluetooth: ");
+	strcat(infomsg,_(" Bluetooth: "));
 	strcat(infomsg,btdev);
-	strcat(infomsg,"\n BD Address:\n ");
+	strcat(infomsg,_("\n BD Address:\n "));
 	strcat(infomsg,addr);
 	strcat(infomsg,btupdown);
 //update icon...
@@ -94,7 +94,7 @@ void  view_popup_menu_About (GtkWidget *menuitem, gpointer userdata)
 		gtk_window_set_default_size(GTK_WINDOW(window), 200, 130);
 		gtk_container_set_border_width (GTK_CONTAINER(window), 4);
 		
-		button = gtk_button_new_with_label("\"Bluez-tray-0,1\"\n\n    GPL v2\n\n  DdShurick.");
+		button = gtk_button_new_with_label(_("\"Bluez-tray-0,1\"\n\n    GPL v2\n\n  DdShurick."));
 		g_signal_connect_swapped(G_OBJECT(button),"clicked",G_CALLBACK(gtk_widget_destroy),G_OBJECT(window));
 		gtk_container_add(GTK_CONTAINER(window), button);
 //		g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
@@ -130,16 +130,16 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 {
 	GtkWidget *menu, *menuitem;
     menu = gtk_menu_new();
-/*    menuitem = gtk_menu_item_new_with_label("Информация");
+/*    menuitem = gtk_menu_item_new_with_label(_("Info"));
       g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onInfo, status_icon);
 //    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-//    menuitem = gtk_menu_item_new_with_label("Поиск устройств");
+//    menuitem = gtk_menu_item_new_with_label(_("Search device"));
 //    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onFindDevices, status_icon);
 //    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-//    menuitem = gtk_menu_item_new_with_label("Передать файлы");
+//    menuitem = gtk_menu_item_new_with_label(_("Send file(s)"));
 //    g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPushFile, status_icon);
 //    gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem); */
-    menuitem = gtk_menu_item_new_with_label("О программе");
+    menuitem = gtk_menu_item_new_with_label(_("About"));
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_About, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     if (state=='1') {
@@ -153,12 +153,12 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	}
 	if (strstr(btupdown,"PSCAN ISCAN")) {
-		menuitem = gtk_menu_item_new_with_label("Отключить видимость");
+		menuitem = gtk_menu_item_new_with_label(_("Undiscover"));
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPscan, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	}
 	else {
-		menuitem = gtk_menu_item_new_with_label("Включить видимость");
+		menuitem = gtk_menu_item_new_with_label(_("Discover"));
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPiscan, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	}
@@ -178,7 +178,7 @@ static GtkStatusIcon *create_tray_icon() {
 
 int main(int argc, char **argv) {
 	
-	if (argc != 3) { printf ("%s\n","Usage: bluez-tray hci0 rfkill0"); exit(1); }
+	if (argc != 3) { printf ("%s\n",_("Usage: bluez-tray hci0 rfkill0")); exit(1); }
 	
 	gtk_init(&argc, &argv);
 	btdev = argv[1];
@@ -204,17 +204,17 @@ int main(int argc, char **argv) {
 	strcat(scancmd,argv[1]);
 
 	label_on[0]=0;
-	strcat(label_on,"Включить ");
+	strcat(label_on,_("Enable "));
 	strcat(label_on,argv[1]);
 
 	label_off[0]=0;
-	strcat(label_off,"Отключить ");
+	strcat(label_off,"_(Disable "));
 	strcat(label_off,argv[1]);
 //    GtkStatusIcon *tray_icon;
 	
-//    setlocale( LC_ALL, "" );
-//    bindtextdomain( "bluez_tray", "/usr/share/locale" );
-//    textdomain( "bluez_tray" );
+    setlocale( LC_ALL, "" );
+    bindtextdomain( "bluez_tray", "/usr/share/locale" );
+    textdomain( "bluez_tray" );
 
     
     tray_icon = create_tray_icon();
