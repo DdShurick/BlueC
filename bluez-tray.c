@@ -177,7 +177,7 @@ static GtkStatusIcon *create_tray_icon() {
 
 int main(int argc, char **argv) {
 	
-	if (argc != 3) { printf (_("%s\n","Usage: bluez-tray hci0 rfkill0")); exit(1); }
+	if (argc != 3) { printf ("%s\n",_("Usage: bluez-tray hci0 rfkill0")); exit(1); }
 	
 	gtk_init(&argc, &argv);
 	btdev = argv[1];
