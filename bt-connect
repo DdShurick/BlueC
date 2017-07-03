@@ -263,7 +263,6 @@ do
 		</hbox>
 		<hbox>
 			<button><label>$(gettext 'Bluetooth headset')</label>
-#				$(/usr/lib/gtkdialog/xml_button-icon execute)
 				<action>SETDEFAULT2 &</action>
 			</button>
 		</hbox>
