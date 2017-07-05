@@ -7,18 +7,7 @@ export DISPLAY=$(/bin/cat /tmp/dsp)
 [ "$(/usr/sbin/hciconfig | grep DOWN)" ] && /usr/sbin/hciconfig $1 up
 
 err_msg () {
-export show_bt="
-<window title=\"Bluetooth manager\" icon-name=\"gtk-about\">
-	<vbox>
-		<text>
-			<label>$1</label>
-		</text>
-		<button ok></button>
-	</vbox>
-</window>
-"
-[ "$PID" ] && kill $PID
-gtkdialog --program=show_bt --center
+ntf -a "$(gettext 'Puppy bluetooth manager')" "$1")
 exit 1
 }
 
