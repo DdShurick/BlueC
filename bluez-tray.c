@@ -15,7 +15,7 @@ Bluez-tray GPL v2, DdShutick 18.05.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 1000; /*update interval in milliseconds*/
 FILE *fp;
-char statefile[42], hardfile[42], addressfile[36], *btdev, btupdown[23], addr[20], infomsg[72], cmd[32], label_on[24], label_off[24], scancmd[10]="hciconfig ", hcicmd[25];
+char statefile[42], hardfile[42], *btdev, btupdown[23], addr[20], infomsg[72], cmd[32], label_on[24], label_off[24], scancmd[10]="hciconfig ", hcicmd[25];
 int state;
 
 gboolean Update(gpointer ptr) {
@@ -27,10 +27,10 @@ soft blocked*/
 	fclose(fp);
 	
 //Infomsg
-	if ((fp = fopen(addressfile,"r"))==NULL) exit(1);
+/*	if ((fp = fopen(addressfile,"r"))==NULL) exit(1);
 	fgets(addr,sizeof(addr),fp);
-	fclose(fp);
-	fp = popen("/usr/sbin/hciconfig | /bin/egrep 'UP|DOWN' | tr -d '\t'","r");
+	fclose(fp);*/
+	fp = popen("/usr/bin/hciconfig | /bin/egrep 'UP|DOWN' | tr -d '\t'","r");
 	fgets(btupdown,sizeof btupdown,fp);
 	pclose(fp);
 	infomsg[0]=0;
@@ -197,17 +197,17 @@ int main(int argc, char **argv) {
 	strcat(statefile,"/state");
 
 
-	addressfile[0]=0;
+/*	addressfile[0]=0;
 	strcat(addressfile,"/sys/class/bluetooth/");
 	strcat(addressfile,argv[1]);
-	strcat(addressfile,"/address");
+	strcat(addressfile,"/address");*/
 
 	cmd[0]=0;
 	strcat(cmd,"/usr/bin/bt-connect ");
 	strcat(cmd,argv[1]);
 	
 	hcicmd[0]=0;
-	strcat(hcicmd,"/usr/sbin/hciconfig ");
+	strcat(hcicmd,"/usr/bin/hciconfig ");
 	strcat(hcicmd,argv[1]);
 	
 	strcat(scancmd,argv[1]);
