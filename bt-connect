@@ -1,13 +1,20 @@
 #!/bin/sh
 # version 23.06.17
 
-[ $1 ] || exit
+if [ $1 ] then
+	HCI_DEV="/usr/bin/hciconfig | grep '^hci.:'| cut -d ':' -f1"
+	HCI_ADDR="/usr/bin/hciconfig | grep 'Address: '| cut -d ' ' -f3"
+else
+	HCI_DEV=$1
+	HCI_RFKILL=$2
+fi
+
 export DISPLAY=$(/bin/cat /tmp/dsp)
-[ "$(cat /sys/class/bluetooth/$1/rfkill*/state)" = 0 ] && /usr/bin/rfkill unblock $1
-[ "$(/usr/sbin/hciconfig | grep DOWN)" ] && /usr/sbin/hciconfig $1 up
+[ "$(cat /sys/class/bluetooth/$HCI_DEV/rfkill*/state)" = 0 ] && /usr/bin/rfkill unblock HCI_DEV
+[ "$(/usr/bin/hciconfig | grep DOWN)" ] && /usr/bin/hciconfig $HCI_DEV up
 
 err_msg () {
-ntf -a "$(gettext 'Puppy bluetooth manager')" "$1"
+ntf -a "$(gettext 'Error!')" "$1"
 exit 1
 }
 
@@ -16,10 +23,11 @@ sync
 killall bluetoothd
 sleep 0.2
 
-if ! [ -d /sys/class/bluetooth/ ]; then
+if ! [ -d /sys/class/bluetooth/$HCI_DEV ]; then
 BT_ERROR=1
+err_msg "Local bluetooth device not found"
 else
-bluetoothd -n &
+bluetoothd &
 BT_ERROR=0
 sleep 0.2
 fi	
@@ -191,7 +199,7 @@ obexfs  -b $mac1 -B $channel /mnt/bluetoth 2>> /tmp/bt-error.log
 }
 export -f OBEX_MOUNT
 
-[ "$(hcitool -i $1 dev)" ] || err_msg "Bluetooth devices not found"
+[ "$(hcitool -i $HCI_DEV dev)" ] || err_msg "Local bluetooth device not found"
 
 export process='<pixmap><input file>/usr/share/pixmaps/process.gif</input></pixmap>'
 gtkdialog -c --program=process &
