@@ -1,6 +1,6 @@
 /*Based on a simple systray applet example by Rodrigo De Castro, 2007
 GPL license /usr/share/doc/legal/gpl-2.0.txt.
-Bluez-tray GPL v2, DdShutick 18.05.2016 */
+Bluez-tray GPL v2, DdShutick 07.07.2016 */
 
 #include <string.h>
 #include <stdio.h>
