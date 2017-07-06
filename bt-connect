@@ -7,7 +7,7 @@ export DISPLAY=$(/bin/cat /tmp/dsp)
 [ "$(/usr/sbin/hciconfig | grep DOWN)" ] && /usr/sbin/hciconfig $1 up
 
 err_msg () {
-ntf -a "$(gettext 'Puppy bluetooth manager')" "$1")
+ntf -a "$(gettext 'Puppy bluetooth manager')" "$1"
 exit 1
 }
 
