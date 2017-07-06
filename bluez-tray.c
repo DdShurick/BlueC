@@ -98,7 +98,7 @@ void  view_popup_menu_About (GtkWidget *menuitem, gpointer userdata)
 		gtk_window_set_default_size(GTK_WINDOW(window), 200, 130);
 		gtk_container_set_border_width (GTK_CONTAINER(window), 4);
 		
-		button = gtk_button_new_with_label(_("\"Bluez-tray-0,1\"\n\n    GPL v2\n\n  DdShurick."));
+		button = gtk_button_new_with_label(_("\"Bluez-tray-0.1\"\n\n    GPL v2\n\n  DdShurick."));
 		g_signal_connect_swapped(G_OBJECT(button),"clicked",G_CALLBACK(gtk_widget_destroy),G_OBJECT(window));
 		gtk_container_add(GTK_CONTAINER(window), button);
 //		g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
