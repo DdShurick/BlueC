@@ -201,7 +201,7 @@ void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
 {
-    if (system("urxvt -e /usr/bin/bluetoothctl &")) system("/usr/bin/puppybt");
+    if ((system("/usr/bin/rxvt -e /usr/bin/bluetoothctl &")) == 0) system("/usr/bin/puppybt &");
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
