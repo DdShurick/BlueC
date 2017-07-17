@@ -254,10 +254,10 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 static GtkStatusIcon *create_tray_icon() {
 
     tray_icon = gtk_status_icon_new();
+    gtk_status_icon_set_visible(tray_icon, TRUE);
     g_signal_connect(G_OBJECT(tray_icon), "activate", G_CALLBACK(tray_icon_on_click), NULL);
     g_signal_connect(G_OBJECT(tray_icon), "popup-menu", G_CALLBACK(tray_icon_on_menu), NULL);
-    gtk_status_icon_set_visible(tray_icon, TRUE);
-
+    
     return tray_icon;
 }
 
