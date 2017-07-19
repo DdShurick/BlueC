@@ -70,10 +70,10 @@ gboolean Update(gpointer ptr) {
 /*check status bluetooth
 hard blocked*/
 		if ((fp = fopen(hardfile,"r"))==NULL) exit(1);
-		if (fgetc(fp)=='1') strcat(infomsg,"\n Блоктрован аппаратно \n");
+		if (fgetc(fp)=='1') strcat(infomsg,"\n Блокирован аппаратно \n");
 		fclose(fp);
 		if ((fp = fopen(softfile,"r"))==NULL) exit(1);
-		if (fgetc(fp)=='1') strcat(infomsg,"\n Блоктрован программно \n");
+		if (fgetc(fp)=='1') strcat(infomsg,"\n Блокирован программно \n");
 		fclose(fp);
 	}
 	else if (state=='1') {
@@ -160,7 +160,7 @@ void  view_popup_menu_About (GtkWidget *menuitem, gpointer userdata)
 		gtk_window_set_default_size(GTK_WINDOW(window), 200, 130);
 		gtk_container_set_border_width (GTK_CONTAINER(window), 4);
 		
-		button = gtk_button_new_with_label("\"Bluez-tray-0.2\"\n\n    GPL v2\n\n  DdShurick.");
+		button = gtk_button_new_with_label("\"Bluez-tray-0.2\"\n\n    GPL v2\n\n  DdShurick");
 		g_signal_connect_swapped(G_OBJECT(button),"clicked",G_CALLBACK(gtk_widget_destroy),G_OBJECT(window));
 		gtk_container_add(GTK_CONTAINER(window), button);
 //		g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
@@ -187,7 +187,7 @@ void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 //		system(strcat(hcicmd," up"));
 		/* Unblock if blocked */
 		if ((fp = fopen(softfile,"r"))==NULL) exit(1);
-		if (fgetc(fp)=='1') system("/usr/sbin/rfkill unblock bluetooth");
+		if (fgetc(fp)=='1') system("/usr/bin/rfkill unblock bluetooth");
 		fclose(fp);
 		/* Start HCI device */
 		if (ioctl(ctl, HCIDEVUP, hdev) < 0) {
@@ -248,7 +248,7 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 	}
 	
 	gtk_widget_show_all(menu);
-    gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, gdk_event_get_time(NULL));
+    gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, activate_time);
 }
 
 static GtkStatusIcon *create_tray_icon() {
