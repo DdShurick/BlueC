@@ -133,7 +133,7 @@ void  view_popup_menu_About (GtkWidget *menuitem, gpointer userdata)
 		gtk_window_set_default_size(GTK_WINDOW(window), 200, 130);
 		gtk_container_set_border_width (GTK_CONTAINER(window), 4);
 		
-		button = gtk_button_new_with_label("\"Bluez-tray-0.2\"\n\n    GPL v2\n\n  DdShurick");
+		button = gtk_button_new_with_label("\t \"Bluez-tray-0.3\" \n\nGUI for local bluetooth interface\n\n\tDdShurick, GPL v2 ");
 		g_signal_connect_swapped(G_OBJECT(button),"clicked",G_CALLBACK(gtk_widget_destroy),G_OBJECT(window));
 		gtk_container_add(GTK_CONTAINER(window), button);
 /*		g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
@@ -222,6 +222,57 @@ static GtkStatusIcon *create_tray_icon() {
     g_signal_connect(G_OBJECT(tray_icon), "popup-menu", G_CALLBACK(tray_icon_on_menu), NULL);
     
     return tray_icon;
+}
+
+void *bt_malloc(size_t size)
+{
+	return malloc(size);
+}
+
+typedef struct {
+	char *str;
+	unsigned int val;
+} hci_map;
+/* HCI dev flags mapping */
+static hci_map dev_flags_map[] = {
+	{ "UP",      HCI_UP      },
+	{ "INIT",    HCI_INIT    },
+	{ "RUNNING", HCI_RUNNING },
+	{ "RAW",     HCI_RAW     },
+	{ "PSCAN",   HCI_PSCAN   },
+	{ "ISCAN",   HCI_ISCAN   },
+	{ "INQUIRY", HCI_INQUIRY },
+	{ "AUTH",    HCI_AUTH    },
+	{ "ENCRYPT", HCI_ENCRYPT },
+	{ NULL }
+};
+
+char *hci_dflagstostr(uint32_t flags)
+{
+	char *str = bt_malloc(50);
+	char *ptr = str;
+	hci_map *m = dev_flags_map;
+
+	if (!str)
+		return NULL;
+
+	*ptr = 0;
+
+	if (!hci_test_bit(HCI_UP, &flags))
+		ptr += sprintf(ptr, "DOWN ");
+
+	while (m->str) {
+		if (hci_test_bit(m->val, &flags))
+			ptr += sprintf(ptr, "%s ", m->str);
+		m++;
+	}
+	return str;
+}
+
+int ba2str(const bdaddr_t *ba, char *str)
+{
+	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+		ba->b[5], ba->b[4], ba->b[3], ba->b[2], ba->b[1], ba->b[0]);
 }
 
 int main(int argc, char **argv) {
