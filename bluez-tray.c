@@ -172,7 +172,7 @@ void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
 {
-    system("/usr/bin/puppybt &");
+    if ((system("/usr/local/bin/defaultbtmanager &")) == 0) system("/usr/bin/puppybt &");
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
