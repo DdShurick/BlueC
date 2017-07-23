@@ -4,6 +4,8 @@ Bluez-tray GPL v2, DdShutick 18.05.2016 */
 
 #include <string.h>
 #include <stdio.h>
+#include <locale.h> 
+#include <libintl.h> 
 #include <stdlib.h>
 #include <errno.h>
 #include <gtk/gtk.h>
@@ -14,6 +16,8 @@ Bluez-tray GPL v2, DdShutick 18.05.2016 */
 #include "bluetooth.h"
 #include "hci.h"
 #include "hci_lib.h"
+
+#define _(STRING)    gettext(STRING)
 
 GtkStatusIcon *tray_icon;
 unsigned int interval = 1000; /*update interval in milliseconds*/
@@ -55,10 +59,10 @@ gboolean Update(gpointer ptr) {
 /*check status bluetooth blocked*/
 		
 		if ((fp = fopen(hardfile,"r"))==NULL) exit(1);
-		if (fgetc(fp)=='1') strcat(infomsg,"\n Блокирован аппаратно \n");
+		if (fgetc(fp)=='1') strcat(infomsg,_("\n Locked hardware \n")); //"\n Блокирован аппаратно \n"
 		fclose(fp);
 		if ((fp = fopen(softfile,"r"))==NULL) exit(1);
-		if (fgetc(fp)=='1') strcat(infomsg,"\n Блокирован программно \n");
+		if (fgetc(fp)=='1') strcat(infomsg,_("\n Blocked software \n")); //"\n Блокирован программно \n"
 		fclose(fp);
 	}
 	else if (state=='1') {
@@ -179,7 +183,7 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 {
 	GtkWidget *menu, *menuitem;
     menu = gtk_menu_new();
-    menuitem = gtk_menu_item_new_with_label("О программе");
+    menuitem = gtk_menu_item_new_with_label(_("About the program")); //"О программе"
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_About, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     if (strstr(st,"UP")) {
@@ -187,18 +191,18 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Disconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     	if (strstr(st,"SCAN")) {
-			menuitem = gtk_menu_item_new_with_label("Отключить видимость");
+			menuitem = gtk_menu_item_new_with_label(_("Disable the visibility")); //"Отключить видимость"
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onNoscan, status_icon);
     		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		}
 		else {
-			menuitem = gtk_menu_item_new_with_label("Включить piscan");
+			menuitem = gtk_menu_item_new_with_label(_("Scan on piscan")); //"Включить piscan"
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPiscan, status_icon);
     		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-    		menuitem = gtk_menu_item_new_with_label("Включить pscan");
+    		menuitem = gtk_menu_item_new_with_label(_("Scan on pscan")); //Включить pscan"
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onPscan, status_icon);
     		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-    		menuitem = gtk_menu_item_new_with_label("Включить iscan");
+    		menuitem = gtk_menu_item_new_with_label(_("Scan on iscan")); //"Включить iscan"
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onIscan, status_icon);
     		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		}
@@ -309,16 +313,16 @@ int main(int argc, char **argv) {
 	strcat(cmd,argv[1]);
 	
 	label_on[0]=0;
-	strcat(label_on,"Включить ");
+	strcat(label_on,_("Power on ")); //"Включить "
 	strcat(label_on,argv[1]);
 
 	label_off[0]=0;
-	strcat(label_off,"Отключить ");
+	strcat(label_off,_("Power off ")); //"Отключить "
 	strcat(label_off,argv[1]);
 	
-/*	setlocale( LC_ALL, "" );
+	setlocale( LC_ALL, "" );
 	bindtextdomain( "bluez_tray", "/usr/share/locale" );
-	textdomain( "bluez_tray" );*/
+	textdomain( "bluez_tray" );
 /* Open HCI socket  */
 	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		perror("Can't open HCI socket.");
