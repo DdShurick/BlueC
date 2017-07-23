@@ -312,6 +312,10 @@ int main(int argc, char **argv) {
 	strcat(cmd,"/usr/bin/bt-connect ");
 	strcat(cmd,argv[1]);
 	
+	setlocale( LC_ALL, "" );
+	bindtextdomain( "bluez_tray", "/usr/share/locale" );
+	textdomain( "bluez_tray" );
+	
 	label_on[0]=0;
 	strcat(label_on,_("Power on ")); //"Включить "
 	strcat(label_on,argv[1]);
@@ -320,9 +324,6 @@ int main(int argc, char **argv) {
 	strcat(label_off,_("Power off ")); //"Отключить "
 	strcat(label_off,argv[1]);
 	
-	setlocale( LC_ALL, "" );
-	bindtextdomain( "bluez_tray", "/usr/share/locale" );
-	textdomain( "bluez_tray" );
 /* Open HCI socket  */
 	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		perror("Can't open HCI socket.");
