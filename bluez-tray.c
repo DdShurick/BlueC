@@ -158,25 +158,29 @@ void  view_popup_menu_Disconnect (GtkWidget *menuitem, gpointer userdata)
 		}
     }
 
-void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
-	{ 
-/* Unblock if blocked */
-		if ((fp = fopen(softfile,"r"))==NULL) exit(1);
-		if (fgetc(fp)=='1') system("/usr/sbin/rfkill unblock bluetooth");
-		fclose(fp);
+void btdevup() {
 /* Start HCI device */
-		if (ioctl(ctl, HCIDEVUP, hdev) < 0) {
-			if (errno == EALREADY)
-			return;
-			fprintf(stderr, "Can't init device hci%d: %s (%d)\n",
+	if (ioctl(ctl, HCIDEVUP, hdev) < 0) {
+		if (errno == EALREADY)
+		return;
+		fprintf(stderr, "Can't init device hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
-			exit(1);
-		}
-    }
+	}
+}
+
+void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
+{ 
+/* Unblock if blocked */
+	if ((fp = fopen(softfile,"r"))==NULL) exit(1);
+	if (fgetc(fp)=='1') system("/usr/sbin/rfkill unblock bluetooth");
+	fclose(fp);
+	btdevup();
+}
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
 {
-    if ((system("/usr/local/bin/defaultbtmanager &")) == 0) system("/usr/bin/puppybt &");
+	if (strstr(st,"DOWN")) btdevup();
+	if ((system("/usr/local/bin/defaultbtmanager &")) == 0) system("/usr/bin/puppybt &");
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
