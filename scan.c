@@ -14,10 +14,11 @@
 #include "bluetooth.h"
 #include "hci.h"
 #include "hci_lib.h"
-
 #include "oui.h"
 
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
+
+FILE	*fd;
 
 #ifdef HAVE_UDEV_HWDB_NEW
 #include <libudev.h>
@@ -64,213 +65,8 @@ char *batocomp(const bdaddr_t *ba)
 }
 #endif
 
-static char *get_minor_device_name(int major, int minor)
-{
-	switch (major) {
-	case 0:	/* misc */
-		return "";
-	case 1:	/* computer */
-		switch (minor) {
-		case 0:
-			return "Uncategorized";
-		case 1:
-			return "Desktop workstation";
-		case 2:
-			return "Server";
-		case 3:
-			return "Laptop";
-		case 4:
-			return "Handheld";
-		case 5:
-			return "Palm";
-		case 6:
-			return "Wearable";
-		}
-		break;
-	case 2:	/* phone */
-		switch (minor) {
-		case 0:
-			return "Uncategorized";
-		case 1:
-			return "Cellular";
-		case 2:
-			return "Cordless";
-		case 3:
-			return "Smart phone";
-		case 4:
-			return "Wired modem or voice gateway";
-		case 5:
-			return "Common ISDN Access";
-		case 6:
-			return "Sim Card Reader";
-		}
-		break;
-	case 3:	/* lan access */
-		if (minor == 0)
-			return "Uncategorized";
-		switch (minor / 8) {
-		case 0:
-			return "Fully available";
-		case 1:
-			return "1-17% utilized";
-		case 2:
-			return "17-33% utilized";
-		case 3:
-			return "33-50% utilized";
-		case 4:
-			return "50-67% utilized";
-		case 5:
-			return "67-83% utilized";
-		case 6:
-			return "83-99% utilized";
-		case 7:
-			return "No service available";
-		}
-		break;
-	case 4:	/* audio/video */
-		switch (minor) {
-		case 0:
-			return "Uncategorized";
-		case 1:
-			return "Device conforms to the Headset profile";
-		case 2:
-			return "Hands-free";
-			/* 3 is reserved */
-		case 4:
-			return "Microphone";
-		case 5:
-			return "Loudspeaker";
-		case 6:
-			return "Headphones";
-		case 7:
-			return "Portable Audio";
-		case 8:
-			return "Car Audio";
-		case 9:
-			return "Set-top box";
-		case 10:
-			return "HiFi Audio Device";
-		case 11:
-			return "VCR";
-		case 12:
-			return "Video Camera";
-		case 13:
-			return "Camcorder";
-		case 14:
-			return "Video Monitor";
-		case 15:
-			return "Video Display and Loudspeaker";
-		case 16:
-			return "Video Conferencing";
-			/* 17 is reserved */
-		case 18:
-			return "Gaming/Toy";
-		}
-		break;
-	case 5:	/* peripheral */ {
-		static char cls_str[48]; cls_str[0] = 0;
-
-		switch (minor & 48) {
-		case 16:
-			strncpy(cls_str, "Keyboard", sizeof(cls_str));
-			break;
-		case 32:
-			strncpy(cls_str, "Pointing device", sizeof(cls_str));
-			break;
-		case 48:
-			strncpy(cls_str, "Combo keyboard/pointing device", sizeof(cls_str));
-			break;
-		}
-		if ((minor & 15) && (strlen(cls_str) > 0))
-			strcat(cls_str, "/");
-
-		switch (minor & 15) {
-		case 0:
-			break;
-		case 1:
-			strncat(cls_str, "Joystick",
-					sizeof(cls_str) - strlen(cls_str) - 1);
-			break;
-		case 2:
-			strncat(cls_str, "Gamepad",
-					sizeof(cls_str) - strlen(cls_str) - 1);
-			break;
-		case 3:
-			strncat(cls_str, "Remote control",
-					sizeof(cls_str) - strlen(cls_str) - 1);
-			break;
-		case 4:
-			strncat(cls_str, "Sensing device",
-					sizeof(cls_str) - strlen(cls_str) - 1);
-			break;
-		case 5:
-			strncat(cls_str, "Digitizer tablet",
-					sizeof(cls_str) - strlen(cls_str) - 1);
-			break;
-		case 6:
-			strncat(cls_str, "Card reader",
-					sizeof(cls_str) - strlen(cls_str) - 1);
-			break;
-		default:
-			strncat(cls_str, "(reserved)",
-					sizeof(cls_str) - strlen(cls_str) - 1);
-			break;
-		}
-		if (strlen(cls_str) > 0)
-			return cls_str;
-		break;
-	}
-	case 6:	/* imaging */
-		if (minor & 4)
-			return "Display";
-		if (minor & 8)
-			return "Camera";
-		if (minor & 16)
-			return "Scanner";
-		if (minor & 32)
-			return "Printer";
-		break;
-	case 7: /* wearable */
-		switch (minor) {
-		case 1:
-			return "Wrist Watch";
-		case 2:
-			return "Pager";
-		case 3:
-			return "Jacket";
-		case 4:
-			return "Helmet";
-		case 5:
-			return "Glasses";
-		}
-		break;
-	case 8: /* toy */
-		switch (minor) {
-		case 1:
-			return "Robot";
-		case 2:
-			return "Vehicle";
-		case 3:
-			return "Doll / Action Figure";
-		case 4:
-			return "Controller";
-		case 5:
-			return "Game";
-		}
-		break;
-	case 63:	/* uncategorised */
-		return "";
-	}
-	return "Unknown (reserved) minor device class";
-}
-
-static char *major_classes[] = {
-	"Miscellaneous", "Computer", "Phone", "LAN Access",
-	"Audio/Video", "Peripheral", "Imaging", "Uncategorized"
-};
-
 /* Device scanning */
-
+/*
 static struct option scan_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "length",	1, 0, 'l' },
@@ -288,7 +84,7 @@ static struct option scan_options[] = {
 static const char *scan_help =
 	"Usage:\n"
 	"\tscan [--length=N] [--numrsp=N] [--iac=lap] [--flush] [--class] [--info] [--oui] [--refresh]\n";
-
+*/
 static void cmd_scan(int dev_id, int argc, char **argv)
 {
 	inquiry_info *info = NULL;
@@ -305,10 +101,10 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 0;
 	flags   = 0;
-
-	for_each_opt(opt, scan_options, NULL) {
+ 
+/*	for_each_opt(opt, scan_options, NULL) { 
 		switch (opt) {
-		case 'l':
+/*		case 'l':
 			length = atoi(optarg);
 			break;
 
@@ -346,18 +142,18 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		case 'O':
 			extoui = 1;
 			break;
-
-		case 'A':
+*/
+/*		case 'A': 
 			extcls = 1;
 			extinf = 1;
 			extoui = 1;
-			break;
+	 		break;
 
 		default:
 			printf("%s", scan_help);
 			return;
-		}
-	}
+		} 
+	}*/
 //	helper_arg(0, 0, &argc, &argv, scan_help);
 
 	if (dev_id < 0) {
@@ -390,6 +186,10 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	if (extcls || extinf || extoui)
 		printf("\n");
 
+	if ((fd = fopen("/tmp/btscan.lst","w"))==NULL) {
+		perror("Can't open");
+		exit(1);
+	}
 	for (i = 0; i < num_rsp; i++) {
 		uint16_t handle = 0;
 
@@ -409,121 +209,55 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			}
 
 			name[248] = '\0';
-
-			printf("\t%s\t%s\n", addr, name);
+			fprintf(fd,"%s\t%s\n", addr, name);
+			printf("%s\t%s\n", addr, name);
 			continue;
 		}
-
-		ba2str(&(info+i)->bdaddr, addr);
-		printf("BD Address:\t%s [mode %d, clkoffset 0x%4.4x]\n", addr,
-			(info+i)->pscan_rep_mode, btohs((info+i)->clock_offset));
-
-		if (extoui) {
-			comp = batocomp(&(info+i)->bdaddr);
-			if (comp) {
-				char oui[9];
-				ba2oui(&(info+i)->bdaddr, oui);
-				printf("OUI company:\t%s (%s)\n", comp, oui);
-				free(comp);
-			}
-		}
-
-		cc = 0;
-
-		if (extinf) {
-			cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
-			if (cr) {
-				bacpy(&cr->bdaddr, &(info+i)->bdaddr);
-				cr->type = ACL_LINK;
-				if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-					handle = 0;
-					cc = 1;
-				} else {
-					handle = htobs(cr->conn_info->handle);
-					cc = 0;
-				}
-				free(cr);
-			}
-
-			if (cc) {
-				if (hci_create_connection(dd, &(info+i)->bdaddr,
-						htobs(di.pkt_type & ACL_PTYPE_MASK),
-						(info+i)->clock_offset | 0x8000,
-						0x01, &handle, 25000) < 0) {
-					handle = 0;
-					cc = 0;
-				}
-			}
-		}
-
-		if (hci_read_remote_name_with_clock_offset(dd,
-					&(info+i)->bdaddr,
-					(info+i)->pscan_rep_mode,
-					(info+i)->clock_offset | 0x8000,
-					sizeof(name), name, 100000) < 0) {
-		} else {
-			for (n = 0; n < 248 && name[n]; n++) {
-				if ((unsigned char) name[i] < 32 || name[i] == 127)
-					name[i] = '.';
-			}
-
-			name[248] = '\0';
-		}
-
-		if (strlen(name) > 0)
-			printf("Device name:\t%s\n", name);
-
-		if (extcls) {
-			memcpy(cls, (info+i)->dev_class, 3);
-			printf("Device class:\t");
-			if ((cls[1] & 0x1f) > sizeof(major_classes) / sizeof(char *))
-				printf("Invalid");
-			else
-				printf("%s, %s", major_classes[cls[1] & 0x1f],
-					get_minor_device_name(cls[1] & 0x1f, cls[0] >> 2));
-			printf(" (0x%2.2x%2.2x%2.2x)\n", cls[2], cls[1], cls[0]);
-		}
-
-		if (extinf && handle > 0) {
-			if (hci_read_remote_version(dd, handle, &version, 20000) == 0) {
-				char *ver = lmp_vertostr(version.lmp_ver);
-				printf("Manufacturer:\t%s (%d)\n",
-					bt_compidtostr(version.manufacturer),
-					version.manufacturer);
-				printf("LMP version:\t%s (0x%x) [subver 0x%x]\n",
-					ver ? ver : "n/a",
-					version.lmp_ver, version.lmp_subver);
-				if (ver)
-					bt_free(ver);
-			}
-
-			if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
-				char *tmp = lmp_featurestostr(features, "\t\t", 63);
-				printf("LMP features:\t0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x"
-					" 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
-					features[0], features[1],
-					features[2], features[3],
-					features[4], features[5],
-					features[6], features[7]);
-				printf("%s\n", tmp);
-				bt_free(tmp);
-			}
-
-			if (cc) {
-				usleep(10000);
-				hci_disconnect(dd, handle, HCI_OE_USER_ENDED_CONNECTION, 10000);
-			}
-		}
-
-		printf("\n");
+	fclose(fd);
 	}
 }
 
+static void usage(void)
+{
+	int i;
+
+	printf("bt-scan - part HCI Tool ver 5.46\n");
+	printf("Usage:\n"
+		"\tbt-scan [options]\n");
+	printf("Options:\n"
+		"\t-h, --help\tDisplay help\n"
+		"\t-i, --device dev\tHCI device\n");
+	printf("The result is written in /tmp/btscan.lst");
+}
+
+static struct option main_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "device",	1, 0, 'i' },
+	{ 0, 0, 0, 0 }
+};
+
 int main(int argc, char *argv[]) {
 	
-	int ctl;
+	int ctl, opt, i, dev_id = -1;
 	static struct hci_dev_info di;
-	
+//надо посмотреть	
+	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
+		switch (opt) {
+		case 'i':
+			dev_id = hci_devid(optarg);
+			if (dev_id < 0) {
+				perror("Invalid device");
+				exit(1);
+			}
+			break;
+
+		case 'h':
+		default:
+			usage();
+			exit(0);
+		}
+	}
+//.	
 	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		perror("Can't open HCI socket.");
 		exit(1);
