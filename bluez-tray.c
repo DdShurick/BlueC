@@ -33,7 +33,10 @@ gboolean Update(gpointer ptr) {
 	
 /*check status bluetooth soft blocked*/	
 	
-	if ((fp = fopen(statefile,"r"))==NULL) exit(1);
+	if ((fp = fopen(statefile,"r"))==NULL) {
+		perror("Can't open statefile");
+		exit(1);
+	}
 	state = fgetc(fp);
 	fclose(fp);
 	
@@ -58,10 +61,16 @@ gboolean Update(gpointer ptr) {
 		
 /*check status bluetooth blocked*/
 		
-		if ((fp = fopen(hardfile,"r"))==NULL) exit(1);
+		if ((fp = fopen(hardfile,"r"))==NULL) {
+			perror("Can't open hardfile");
+			exit(1);
+		}
 		if (fgetc(fp)=='1') strcat(infomsg,_("\n Locked hardware \n")); //"\n Блокирован аппаратно \n"
 		fclose(fp);
-		if ((fp = fopen(softfile,"r"))==NULL) exit(1);
+		if ((fp = fopen(softfile,"r"))==NULL) {
+			perror("Can't open softfile");
+			exit(1);
+		}
 		if (fgetc(fp)=='1') strcat(infomsg,_("\n Blocked software \n")); //"\n Блокирован программно \n"
 		fclose(fp);
 	}
@@ -171,7 +180,10 @@ void btdevup() {
 void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 { 
 /* Unblock if blocked */
-	if ((fp = fopen(softfile,"r"))==NULL) exit(1);
+	if ((fp = fopen(softfile,"r"))==NULL) {
+		perror("Can't open softfile");
+		exit(1);
+	}
 	if (fgetc(fp)=='1') system("/usr/sbin/rfkill unblock bluetooth");
 	fclose(fp);
 	btdevup();
@@ -285,8 +297,10 @@ int ba2str(const bdaddr_t *ba, char *str)
 
 int main(int argc, char **argv) {
 	
-	if (argc != 3) { printf ("%s\n","Usage: bluez-tray hci0 rfkill0"); exit(1); }
-	
+	if (argc != 3) {
+		fprintf (stderr,"%s\n","Usage: bluez-tray hci0 rfkill0");
+		exit(1);
+	}
 	gtk_init(&argc, &argv);
 	btdev = argv[1];
 	hdev = atoi(btdev + 3);
