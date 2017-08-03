@@ -325,14 +325,15 @@ int main(int argc, char **argv) {
 	strcat(statefile,"/");
 	strcat(statefile,argv[2]);
 	strcat(statefile,"/state");
-	
+/*	
 	cmd[0]=0;
-	strcat(cmd,"/usr/bin/bt-connect ");
+	strcat(cmd,"/usr/bin/puppybt ");
 	strcat(cmd,argv[1]);
-	
+	strcat(cmd," &");
+*/	
 	setlocale( LC_ALL, "" );
-	bindtextdomain( "bluez_tray", "/usr/share/locale" );
-	textdomain( "bluez_tray" );
+	bindtextdomain( "bluez-tray", "/usr/share/locale" );
+	textdomain( "bluez-tray" );
 	
 	label_on[0]=0;
 	strcat(label_on,_("Power on ")); //"Включить "
