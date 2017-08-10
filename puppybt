@@ -1,0 +1,353 @@
+#!/bin/sh
+#!/bin/sh
+# version 25.07.17 from Ddshurick BlueC repository
+
+err_msg () {
+[ `which ntf` ] && ntf -a "$(gettext 'Error!')" "$1" || echo "$1"
+exit 1
+}
+
+[ -d /sys/class/bluetooth ] || err_msg "Local bluetooth device not found"
+N=$[$(ls -1 /sys/class/bluetooth | wc -l) - 1]
+[ $N = -1 ] && err_msg "Local bluetooth device not found"
+if [ $N -gt 0 ]; then
+#Здесь надо сделать графический выбор
+ err_msg "Check bluetooth device"
+fi
+[ "`cat /sys/class/bluetooth/hci$N/rfkill?/hard`" = 0 ] || err_msg "Local bluetooth device hard blocked"
+[ "`cat /sys/class/bluetooth/hci$N/rfkill?/soft`" = 0 ] || /usr/bin/rfkill unblock bluetooth
+
+#if [ ! "`pidof bluetoothd`" ]; then ntf -i "$(gettext 'Starting bluetoothd daemon')"; /usr/bin/bluetoothd -n -C ; fi
+
+if ! [ $1 ]; then
+	HCI_DEV=hci$N
+#	if [ "`btmgmt info| grep 'current settings'| grep 'powered'`" = "" ]; then
+#		if ! btmgmt power on; then
+#			err_msg "Local bluetooth device not found"
+#		fi
+#	fi
+#	HCI_ADDR=`btmgmt info | grep -o '..:..:..:..:..:..'`
+#	HCI_RFKILL=`ls -1 /sys/class/bluetooth/$HCI_DEV | grep rfkill`
+else
+	HCI_DEV=$1
+#	HCI_RFKILL=$2
+fi
+
+bluez-tray hci0 up
+
+export DISPLAY=$(/bin/cat /tmp/dsp)
+#[ "$(cat /sys/class/bluetooth/$HCI_DEV/rfkill*/state)" = 0 ] && /usr/bin/rfkill unblock $HCI_DEV
+#[ "`btmgmt info| grep 'current settings'| grep 'powered'`" = "" ] && btmgmt power on
+
+RestartBT() {
+sync
+killall bluetoothd
+sleep 5
+
+if ! [ -d /sys/class/bluetooth/$HCI_DEV ]; then
+err_msg "Local bluetooth device not found"
+BT_ERROR=1
+else
+bluetoothd -n -С &
+BT_ERROR=0
+sleep 0.2
+fi	
+}
+
+export -f RestartBT
+
+Reset_asound () {
+	
+echo "
+defaults.pcm.card 0
+defaults.pcm.device 0
+defaults.ctl.card 0
+###########
+pcm.btheadset {
+   type plug
+   slave {
+       pcm {
+           type bluetooth
+           device XX:XX:XX:XX:XX:XX
+           profile \"auto\"
+       }
+   }
+   hint {
+       show on
+       description \"BT Headset\"
+   }
+}
+ctl.btheadset {
+  type bluetooth
+}
+#pcm.!default pcm.btheadset
+#ctl.!default ctl.btheadset
+" > ~/.asoundrc
+
+}
+export -f Reset_asound 
+
+SPEAKER () {
+sed -i 's/Media,Socket$/Media/' /etc/bluetooth/audio.conf
+RestartBT
+cat > /tmp/go2.sh << EOF
+echo $(gettext 'Leave this window open while the music plays...')
+a2dp-alsa --sink hci0 | aplay -f cd  
+read
+EOF
+urxvt $GG+10+8 -title "$(gettext 'Bluetooth Audio Stream')" -e sh /tmp/go2.sh
+sed -i 's/Media$/Media,Socket/' /etc/bluetooth/audio.conf
+RestartBT
+}
+export -f SPEAKER
+
+TESTAUDIO () {
+cat > /tmp/go.sh << EOF
+aplay -D btheadset /usr/share/audio/2barks.wav
+read
+EOF
+urxvt $G -title "$(gettext 'Bluetooth Audio Test')" -e sh /tmp/go.sh
+rm -f /tmp/go.sh
+}
+export -f TESTAUDIO
+
+SETDEFAULT1 ()
+{
+Reset_asound 
+
+ACTIVEMAC="$(cat /tmp/bt-active-headset)"
+
+if [ "$ACTIVEMAC" != "" ]; then
+bt-device -d "$ACTIVEMAC"
+fi
+
+#sed -i 's/^#defaults/defaults/' ~/.asoundrc
+#sed -i 's/^pcm.!default/#pcm.!default/' ~/.asoundrc
+#sed -i 's/^ctl.!default/#ctl.!default/' ~/.asoundrc
+
+rm -f /tmp/bt-active-headset
+
+ntf -i "$(gettext 'Puppy bluetooth manager')"  "$(gettext 'Default audio device set to sound card')"
+}
+export -f SETDEFAULT1
+
+SETDEFAULT2 ()
+{
+cat > /tmp/go.sh << EOF
+
+echo "$(gettext 'Apply new settings for \$BTNAME...')"
+echo "\$MAC" > /tmp/bt-active-headset
+sed -i "s/XX:XX:XX:XX:XX:XX/\${MAC}/g" ~/.asoundrc
+sed -i 's/^defaults/#defaults/' ~/.asoundrc
+sed -i 's/^#pcm.!default/pcm.!default/' ~/.asoundrc
+sed -i 's/^#ctl.!default/ctl.!default/' ~/.asoundrc
+ntf -i "$(gettext 'Default audio device set to bluetooth headset')"
+EOF
+urxvt $G -title "$(gettext 'Bluetooth Headset')" -e sh /tmp/go.sh
+#killall dialog
+rm -f /tmp/go.sh
+}
+export -f SETDEFAULT2
+
+CONNECT_SERIAL()
+{
+cat > /tmp/go.sh << EOF
+CHANNEL=\$(dialog --stdout --nocancel --rangebox "$(gettext 'Select channel of bluetooth serial by pressing ARROW UP/DOWN')" 4 40 1 99 1)
+clear
+cp -f /etc/bluetooth/rfcomm.conf /etc/bluetooth/rfcomm.conf.bak
+echo "rfcomm0 {
+# Bluetooth address of the device
+	device \$MAC;
+# RFCOMM channel for the connection
+	channel	\$CHANNEL;
+}" > /etc/bluetooth/rfcomm.conf
+echo "$(gettext 'Connecting to \$BTNAME on Channel \$CHANNEL...')"
+rfcomm connect 0 
+read 
+EOF
+urxvt $G -title "$(gettext 'Bluetooth Serial')" -e sh /tmp/go.sh
+killall dialog
+rm -f /tmp/go.sh
+}
+export -f CONNECT_SERIAL
+
+DISCONNECT_SERIAL()
+{
+cat > /tmp/go.sh << EOF
+echo "$(gettext 'Disconnecting bluetooth serial...')"
+killall rfcomm
+rfcomm release 0
+cp -f /etc/bluetooth/rfcomm.conf.bak /etc/bluetooth/rfcomm.conf
+echo "$(gettext 'Bluetooth serial disconnected')"
+read 
+EOF
+urxvt $G -title "$(gettext 'Bluetooth Serial')" -e sh /tmp/go.sh
+#killall dialog
+rm -f /tmp/go.sh
+}
+export -f DISCONNECT_SERIAL
+
+OBEX_RECEIVE()
+{
+# здесь надо обработать наличие запущенного obexpushd, если запущен, то выключаем, если не запущен - включаем
+obexpushd -n -B -o ~/Downloads
+#с каталогом для приема файлов желательно определиться. стоит ли делать каталог bluetooth-share или подобный
+}
+export -f OBEX_RECEIVE
+
+OBEX_PUSH()
+{
+# Открыть диалог выбора файлов
+# получить данные об устройстве на который отправляем (mac, номер канала)
+# команда отправки файла:
+ussp-push $mac@$channel $local_file $remote_file
+#возможно надо индикатор отправки или сообщение о том что файлы отправлены успешно.
+}
+export -f OBEX_PUSH
+
+OBEX_MOUNT()
+{
+#Здесь нужна проверка, если уже смонтировано, то размонтируем.
+umount /mnt/bluetooth 2>> /tmp/bt-error.log #нужна проверка что размонтирование успешно, т.к. возможно будут открытые файлы и не размонтируется
+#алгоритм взят из Puppyrus bt-manager
+hciconfig hci0 reset
+mkdir /mnt/bluetooth
+obexfs  -b $mac1 -B $channel /mnt/bluetoth 2>> /tmp/bt-error.log
+# второй вариант монтирования из Puppyrus bt-manager
+#obexfs -b $mac1 -B $channel -N /mnt/bluetoth 2>> /tmp/bt-error.log
+# третий вариант монтирования из Puppyrus bt-manager
+#obexftp -b $mac1 -l 2>> /tmp/bt-error.log
+}
+export -f OBEX_MOUNT
+
+export process="<window decorated=\"false\">
+	<pixmap><input file>/usr/share/pixmaps/process.gif</input></pixmap>
+</window>
+"
+gtkdialog -c --program=process &
+PID=$!
+
+bt-scan
+#sleep 1
+#dbus-send --system --reply-timeout=8000 --type=method_call --dest=org.bluez /org/bluez/hci0 org.bluez.Adapter1.StartDiscovery
+#btmgmt find | grep 'dev_found\|name' > /tmp/btdev.lst
+: > /tmp/panel
+#N=0
+#if [ ! -s /tmp/btscan.lst ]; then /bin/kill $PID; ntf -a "$(gettext 'Puppy bluetooth manager')" "$(gettext 'Remote bluetooth devices not found')"; exit; fi
+bt-scan | grep -o '..:..:..:..:..:..' | while read BDA
+do
+#check pair-nonpair device status
+#echo "<vbox>" >> /tmp/panel
+#N=$[N+1] 
+#DEV_PAIR=$(dbus-send --system --print-reply --type=method_call --dest=org.bluez /org/bluez/$HCI_DEV/dev_$(echo $BDA | tr ':' '_') org.freedesktop.DBus.Properties.Get string:org.bluez.Device1 string:Paired | egrep -o 'true|false')
+
+	if [ "$DEV_PAIR" = "true" ]; then
+echo "<frame>
+	<hbox>
+		<text>
+   		<label>Unpaired</label>
+		</text>
+		<button>
+  			<action>\"echo UNPAIR $BDA &\"</action>
+		</button>
+	</hbox>
+</frame>" >> /tmp/panel
+	elif [ "$DEV_PAIR" = "false" ]; then
+echo "<frame>
+	<hbox>
+		<text>
+   		<label>Paired</label>
+		</text>
+		<button yes>
+  			<action>\"echo PAIR $BDA &\"</action>
+		</button>
+	</hbox>
+</frame>" >> /tmp/panel
+	fi
+# sleep 1
+ sdptool browse $BDA > /tmp/${BDA}-info.lst || continue
+ echo "<vbox>" >> /tmp/panel
+ awk -F[\(\)] '/0x11/ {print $2}' /tmp/${BDA}-info.lst | sort -u | while read S
+	do
+	 CH=$(grep -A4 $S /tmp/${BDA}-info.lst | awk '/Channel/ {print $2}')
+		case $S in
+0x1101) echo "<frame Serial Port>
+ <hbox>
+ <button yes><label>Connect</label>
+ 	<action>CONNECT_SERIAL &</action>
+ </button>
+  <button no><label>Disconnect</label>
+  	<action>DISCONNECT_SERIAL &</action>
+ </button>
+ </hbox>
+</frame>" >> /tmp/panel ;;
+0x1103) echo "<frame Dialup Networking>
+ <button><label>Dialup Networking</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x1105) echo "<frame OBEX Object Push>
+ <hbox>
+ <button><label>Send files</label>
+ 	<action>OBEX_PUSH &</action>
+ </button>
+ <button><label>Reseive files</label>
+ 	<action>OBEX_RECEIVE &</action>
+ </button>
+ </hbox>
+</frame>" >> /tmp/panel 
+#Command \"ussp-push ${BDA}@{$CH} LFILE RFILE\""
+;;
+0x1106) echo "<frame OBEX File Transfer>
+ <button><label>Mount/Unmount file system</label>
+ 	<action>OBEX_MOUNT &</action>
+ </button>
+</frame>" >> /tmp/panel  
+#Command \"obexfs -b $BDA -B $CH\""
+;;
+0x1112) echo "<frame Headset Audio Gateway>
+ <button><label>Stream to speaker</label>
+ 	<action>SPEAKER &</action>
+ </button>
+ <button><label>$(gettext 'Test bluetooth headset audio')</label>
+	<action>TESTAUDIO &</action>
+</button>
+	<frame $(gettext 'Set default audio device')>
+		<button><label>$(gettext 'Sound card')</label>
+			<action>SETDEFAULT1 &</action>
+		</button>
+		<button><label>$(gettext 'Bluetooth headset')</label>
+			<action>SETDEFAULT2 &</action>
+		</button>
+	</frame>
+</frame>" >> /tmp/panel ;;
+0x111f) echo "<frame Handsfree Audio Gateway>
+ <button><label>Audio handsfree</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x110a) echo "<frame Audio Source>
+ <button><label>Audio source</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+0x110c) echo "<frame AV Remote Target>
+ <button><label>AV remote</label>
+ </button>
+</frame>" >> /tmp/panel ;;
+# и т д
+		esac
+	done
+ echo "</vbox>" >> /tmp/panel
+done
+
+ export show_bt="
+<window title=\"Bluetooth manager\" icon-name=\"gtk-about\">
+	<frame Bluetooth devices>
+		<notebook labels=\"$(awk '{print " "$2" "}' /tmp/btscan.lst | tr '\n' '|')\">
+			$(cat /tmp/panel)
+		</notebook>
+	</frame>
+</window>
+" 
+[ -s /tmp/panel ] || err_msg "Bluetooth services not found."
+
+/bin/kill $PID
+gtkdialog --program=show_bt --center || err_msg "Error!"

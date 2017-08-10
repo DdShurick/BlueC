@@ -22,7 +22,7 @@ Bluez-tray GPL v2, DdShutick 18.05.2016 */
 GtkStatusIcon *tray_icon;
 unsigned int interval = 1000; /*update interval in milliseconds*/
 FILE *fp;
-char statefile[42], hardfile[42], softfile[42], *btdev, *st, infomsg[72], cmd[32], label_on[24], label_off[24];
+char statefile[42], hardfile[42], softfile[42], *btdev, *st, infomsg[72], cmd[33], label_on[24], label_off[24];
 int state, ctl, hdev;
 static struct hci_dev_info di;
 
@@ -108,7 +108,7 @@ static void cmd_scan(int ctl, int hdev, char *opt)
 		dr.dev_opt = SCAN_PAGE;
 	else if (!strcmp(opt, "piscan"))
 		dr.dev_opt = SCAN_PAGE | SCAN_INQUIRY;
-
+	
 	if (ioctl(ctl, HCISETSCAN, (unsigned long) &dr) < 0) {
 		fprintf(stderr, "Can't set scan mode on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
@@ -190,9 +190,9 @@ void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 }
 
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
-{
+{	
 	if (strstr(st,"DOWN")) btdevup();
-	if ((system("/usr/local/bin/defaultbtmanager &")) == 0) system("/usr/bin/puppybt &");
+	if ((system("/usr/local/bin/defaultbtmanager &")) == 0) system(cmd);
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
@@ -296,7 +296,7 @@ int ba2str(const bdaddr_t *ba, char *str)
 }
 
 int main(int argc, char **argv) {
-	
+	 
 	if (argc != 3) {
 		fprintf (stderr,"%s\n","Usage: bluez-tray hci0 rfkill0");
 		exit(1);
@@ -325,12 +325,14 @@ int main(int argc, char **argv) {
 	strcat(statefile,"/");
 	strcat(statefile,argv[2]);
 	strcat(statefile,"/state");
-/*	
+	
 	cmd[0]=0;
 	strcat(cmd,"/usr/bin/puppybt ");
 	strcat(cmd,argv[1]);
+	strcat(cmd," ");
+	strcat(cmd,argv[2]);
 	strcat(cmd," &");
-*/	
+	
 	setlocale( LC_ALL, "" );
 	bindtextdomain( "bluez-tray", "/usr/share/locale" );
 	textdomain( "bluez-tray" );
@@ -348,6 +350,7 @@ int main(int argc, char **argv) {
 		perror("Can't open HCI socket.");
 		exit(1);
 	}
+    if (strcmp(argv[2],"up") == 0) { btdevup(); exit(0); }
     
     tray_icon = create_tray_icon();
       
