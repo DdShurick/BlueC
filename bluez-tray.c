@@ -20,7 +20,7 @@ Bluez-tray GPL v2, DdShutick 18.05.2016 */
 #define _(STRING)    gettext(STRING)
 
 GtkStatusIcon *tray_icon;
-unsigned int interval = 1000; /*update interval in milliseconds*/
+unsigned int interval = 2000; /*update interval in milliseconds*/
 FILE *fp;
 char statefile[42], hardfile[42], softfile[42], *btdev, *st, infomsg[72], cmd[33], label_on[24], label_off[24];
 int state, ctl, hdev;
@@ -65,13 +65,13 @@ gboolean Update(gpointer ptr) {
 			perror("Can't open hardfile");
 			exit(1);
 		}
-		if (fgetc(fp)=='1') strcat(infomsg,_("\n Locked hardware \n")); //"\n Блокирован аппаратно \n"
+		if (fgetc(fp)=='1') strcat(infomsg,_("\n Hardware locked \n")); //"\n Блокирован аппаратно \n"
 		fclose(fp);
 		if ((fp = fopen(softfile,"r"))==NULL) {
 			perror("Can't open softfile");
 			exit(1);
 		}
-		if (fgetc(fp)=='1') strcat(infomsg,_("\n Blocked software \n")); //"\n Блокирован программно \n"
+		if (fgetc(fp)=='1') strcat(infomsg,_("\n Software locked \n")); //"\n Блокирован программно \n"
 		fclose(fp);
 	}
 	else if (state=='1') {
@@ -199,7 +199,7 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 {
 	GtkWidget *menu, *menuitem;
     menu = gtk_menu_new();
-    menuitem = gtk_menu_item_new_with_label(_("About the program")); //"О программе"
+    menuitem = gtk_menu_item_new_with_label(_("About")); //"О программе"
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_About, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     if (strstr(st,"UP")) {
@@ -207,7 +207,7 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Disconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     	if (strstr(st,"SCAN")) {
-			menuitem = gtk_menu_item_new_with_label(_("Disable the visibility")); //"Отключить видимость"
+			menuitem = gtk_menu_item_new_with_label(_("Disable visibility")); //"Отключить видимость"
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onNoscan, status_icon);
     		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		}
@@ -298,7 +298,8 @@ int ba2str(const bdaddr_t *ba, char *str)
 int main(int argc, char **argv) {
 	 
 	if (argc != 3) {
-		fprintf (stderr,"%s\n","Usage: bluez-tray hci0 rfkill0");
+		fprintf (stderr,"%s\n","Usage: bluez-tray hci0 rfkill0	- launch desktop applet\n"
+					   "\t bluez-tray hci0 up	- power on controller\n");
 		exit(1);
 	}
 	gtk_init(&argc, &argv);
