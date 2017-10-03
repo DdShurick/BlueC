@@ -12,10 +12,10 @@ Bluez-tray GPL v2, DdShutick 18.05.2016 */
 #include <gdk/gdk.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-/*Эти добавить из bluez-5.45/lib/ */
-#include "bluetooth.h"
-#include "hci.h"
-#include "hci_lib.h"
+/* bluez-5.46_DEV */
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 
 #define _(STRING)    gettext(STRING)
 
@@ -174,6 +174,7 @@ void btdevup() {
 		return;
 		fprintf(stderr, "Can't init device hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
+		exit(1);
 	}
 }
 
@@ -207,7 +208,7 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Disconnect, status_icon);
     	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     	if (strstr(st,"SCAN")) {
-			menuitem = gtk_menu_item_new_with_label(_("Disable the visibility")); //"Отключить видимость"
+			menuitem = gtk_menu_item_new_with_label(_("Disable visibility")); //"Отключить видимость"
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onNoscan, status_icon);
     		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		}
@@ -248,12 +249,12 @@ void *bt_malloc(size_t size)
 {
 	return malloc(size);
 }
-
+/*
 typedef struct {
 	char *str;
 	unsigned int val;
 } hci_map;
-/* HCI dev flags mapping */
+/* HCI dev flags mapping *//*
 static hci_map dev_flags_map[] = {
 	{ "UP",      HCI_UP      },
 	{ "INIT",    HCI_INIT    },
@@ -294,11 +295,11 @@ int ba2str(const bdaddr_t *ba, char *str)
 	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
 		ba->b[5], ba->b[4], ba->b[3], ba->b[2], ba->b[1], ba->b[0]);
 }
-
+*/
 int main(int argc, char **argv) {
 	 
 	if (argc != 3) {
-		fprintf (stderr,"%s\n","Usage: bluez-tray hci0 rfkill0");
+		printf ("%s\n","Usage: bluez-tray hci0 rfkill0\n\tor bluez-tray hci0 up");
 		exit(1);
 	}
 	gtk_init(&argc, &argv);
