@@ -1,160 +1,114 @@
+/*The part of hcitool-5.46*/
+
 #include <stdio.h>
-#include <errno.h>
-#include <ctype.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <string.h>
 #include <getopt.h>
-#include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <signal.h>
-
-#include "bluetooth.h"
-#include "hci.h"
-#include "hci_lib.h"
-#include "oui.h"
-
-#define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 FILE	*fd;
 
-#ifdef HAVE_UDEV_HWDB_NEW
-#include <libudev.h>
+#define ENT(e) (sizeof(e)/sizeof(char*))
+static char *majors[] = {"Misc", "Computer", "Phone", "Net Access", "Audio/Video",\
+                        "Peripheral", "Imaging", "Wearable", "Toy"};
 
-char *batocomp(const bdaddr_t *ba)
-{
-	struct udev *udev;
-	struct udev_hwdb *hwdb;
-	struct udev_list_entry *head, *entry;
-	char modalias[11], *comp = NULL;
+static char* computers[] = {"Misc", "Desktop", "Server", "Laptop", "Handheld",\
+                                "Palm", "Wearable"};
 
-	sprintf(modalias, "OUI:%2.2X%2.2X%2.2X", ba->b[5], ba->b[4], ba->b[3]);
+static char* phones[] = {"Misc", "Cell", "Cordless", "Smart", "Wired",\
+                        "ISDN", "Sim Card Reader For "};
 
-	udev = udev_new();
-	if (!udev)
-		return NULL;
+static char* av[] = {"Misc", "Headset", "Handsfree", "Reserved", "Microphone", "Loudspeaker",\
+                "Headphones", "Portable Audio", "Car Audio", "Set-Top Box",\
+                "HiFi Audio", "Video Tape Recorder", "Video Camera",\
+                "Camcorder", "Video Display and Loudspeaker", "Video Conferencing", "Reserved",\
+                "Game / Toy"};
 
-	hwdb = udev_hwdb_new(udev);
-	if (!hwdb)
-		goto done;
+static char* peripheral[] = {"Misc", "Joystick", "Gamepad", "Remote control", "Sensing device",\
+                "Digitiser Tablet", "Card Reader"};
 
-	head = udev_hwdb_get_properties_list_entry(hwdb, modalias, 0);
+static char* wearable[] = {"Misc", "Wrist Watch", "Pager", "Jacket", "Helmet", "Glasses"};
 
-	udev_list_entry_foreach(entry, head) {
-		const char *name = udev_list_entry_get_name(entry);
+static char* toys[] = {"Misc", "Robot", "Vehicle", "Character", "Controller", "Game"};
+/* end of device descriptions */
 
-		if (name && !strcmp(name, "ID_OUI_FROM_DATABASE")) {
-			comp = strdup(udev_list_entry_get_value(entry));
-			break;
-		}
+/* Decode device class */
+ 
+static void classinfo(uint8_t dev_class[3]) {
+	int flags = dev_class[2];
+	int major = dev_class[1];
+	int minor = dev_class[0] >> 2;
+
+	printf("[ ");
+	if (flags & 0x1) printf("Position ");
+	if (flags & 0x2) printf("Net ");
+	if (flags & 0x4) printf("Render ");
+	if (flags & 0x8) printf("Capture ");
+	if (flags & 0x10) printf("Obex ");
+	if (flags & 0x20) printf("Audio ");
+	if (flags & 0x40) printf("Phone ");
+	if (flags & 0x80) printf("Info ");
+	printf("]");
+
+	if (major > ENT(majors)) {
+		if (major == 63)
+			printf(" Unclassified device\n");
+		return;
 	}
-
-	hwdb = udev_hwdb_unref(hwdb);
-
-done:
-	udev = udev_unref(udev);
-
-	return comp;
+	switch (major) {
+	case 1:
+		if (minor <= ENT(computers)) printf(" %s", computers[minor]);
+		break;
+	case 2:
+		if (minor <= ENT(phones)) printf(" %s", phones[minor]);
+		break;
+	case 3:
+		printf(" Usage %d/56", minor);
+		break;
+	case 4:
+		if (minor <= ENT(av)) printf(" %s", av[minor]);
+		break;
+	case 5:
+		if ((minor & 0xF) <= ENT(peripheral)) printf(" %s", peripheral[(minor & 0xF)]);
+		if (minor & 0x10) printf(" with keyboard");
+		if (minor & 0x20) printf(" with pointing device");
+		break;
+	case 6:
+		if (minor & 0x2) printf(" with display");
+		if (minor & 0x4) printf(" with camera");
+		if (minor & 0x8) printf(" with scanner");
+		if (minor & 0x10) printf(" with printer");
+		break;
+	case 7:
+		if (minor <= ENT(wearable)) printf(" %s", wearable[minor]);
+		break;
+	case 8:
+		if (minor <= ENT(toys)) printf(" %s", toys[minor]);
+		break;
+	}
+	printf(" %s\n", majors[major]);
 }
-#else
-char *batocomp(const bdaddr_t *ba)
-{
-	return NULL;
-}
-#endif
 
-/* Device scanning */
-/*
-static struct option scan_options[] = {
-	{ "help",	0, 0, 'h' },
-	{ "length",	1, 0, 'l' },
-	{ "numrsp",	1, 0, 'n' },
-	{ "iac",	1, 0, 'i' },
-	{ "flush",	0, 0, 'f' },
-	{ "class",	0, 0, 'C' },
-	{ "info",	0, 0, 'I' },
-	{ "oui",	0, 0, 'O' },
-	{ "all",	0, 0, 'A' },
-	{ "ext",	0, 0, 'A' },
-	{ 0, 0, 0, 0 }
-};
-
-static const char *scan_help =
-	"Usage:\n"
-	"\tscan [--length=N] [--numrsp=N] [--iac=lap] [--flush] [--class] [--info] [--oui] [--refresh]\n";
-*/
 static void cmd_scan(int dev_id, int argc, char **argv)
 {
 	inquiry_info *info = NULL;
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int num_rsp, length, flags;
-	uint8_t cls[3], features[8];
-	char addr[18], name[249], *comp;
-	struct hci_version version;
+//	uint8_t cls[3], features[8];
+	char addr[18], name[249]; //, *comp;
 	struct hci_dev_info di;
-	struct hci_conn_info_req *cr;
-	int extcls = 0, extinf = 0, extoui = 0;
-	int i, n, l, opt, dd, cc;
+/*	struct hci_conn_info_req *cr; */
+	int i, n, opt, dd; // l, cc;
 
 	length  = 8;	/* ~10 seconds */
 	num_rsp = 0;
 	flags   = 0;
- 
-/*	for_each_opt(opt, scan_options, NULL) { 
-		switch (opt) {
-/*		case 'l':
-			length = atoi(optarg);
-			break;
-
-		case 'n':
-			num_rsp = atoi(optarg);
-			break;
-
-		case 'i':
-			l = strtoul(optarg, 0, 16);
-			if (!strcasecmp(optarg, "giac")) {
-				l = 0x9e8b33;
-			} else if (!strcasecmp(optarg, "liac")) {
-				l = 0x9e8b00;
-			} else if (l < 0x9e8b00 || l > 0x9e8b3f) {
-				printf("Invalid access code 0x%x\n", l);
-				exit(1);
-			}
-			lap[0] = (l & 0xff);
-			lap[1] = (l >> 8) & 0xff;
-			lap[2] = (l >> 16) & 0xff;
-			break;
-
-		case 'f':
-			flags |= IREQ_CACHE_FLUSH;
-			break;
-
-		case 'C':
-			extcls = 1;
-			break;
-
-		case 'I':
-			extinf = 1;
-			break;
-
-		case 'O':
-			extoui = 1;
-			break;
-*/
-/*		case 'A': 
-			extcls = 1;
-			extinf = 1;
-			extoui = 1;
-	 		break;
-
-		default:
-			printf("%s", scan_help);
-			return;
-		} 
-	}*/
-//	helper_arg(0, 0, &argc, &argv, scan_help);
 
 	if (dev_id < 0) {
 		dev_id = hci_get_route(NULL);
@@ -183,9 +137,6 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if (extcls || extinf || extoui)
-		printf("\n");
-
 	if ((fd = fopen("/tmp/btscan.lst","w"))==NULL) {
 		perror("Can't open");
 		exit(1);
@@ -193,35 +144,33 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	for (i = 0; i < num_rsp; i++) {
 		uint16_t handle = 0;
 
-		if (!extcls && !extinf && !extoui) {
-			ba2str(&(info+i)->bdaddr, addr);
+		ba2str(&(info+i)->bdaddr, addr);
 
-			if (hci_read_remote_name_with_clock_offset(dd,
-					&(info+i)->bdaddr,
-					(info+i)->pscan_rep_mode,
-					(info+i)->clock_offset | 0x8000,
-					sizeof(name), name, 100000) < 0)
-				strcpy(name, "n/a");
+		if (hci_read_remote_name_with_clock_offset(dd,
+			&(info+i)->bdaddr,
+			(info+i)->pscan_rep_mode,
+			(info+i)->clock_offset | 0x8000,
+			sizeof(name), name, 100000) < 0)
+			strcpy(name, "n/a");
 
-			for (n = 0; n < 248 && name[n]; n++) {
-				if ((unsigned char) name[i] < 32 || name[i] == 127)
-					name[i] = '.';
-			}
-
-			name[248] = '\0';
-			fprintf(fd,"%s\t%s\n", addr, name);
-			printf("%s\t%s\n", addr, name);
-			continue;
+		for (n = 0; n < 248 && name[n]; n++) {
+			if ((unsigned char) name[i] < 32 || name[i] == 127) name[i] = '.';
 		}
-	fclose(fd);
+
+		name[248] = '\0';
+		fprintf(fd,"%s %s\n", addr, name);
+		printf("%s %s\n", addr, name);
+		printf("%x %x %x %x\n",(info+i)->pscan_rep_mode,(info+i)->pscan_mode,(info+i)->pscan_period_mode);
+		classinfo((info+i)->dev_class);
+		continue;
 	}
+	fclose(fd);
 }
 
 static void usage(void)
 {
-	int i;
-
-	printf("bt-scan - part HCI Tool ver 5.46\n");
+	printf("bt-scan - scan remote bluetooth device\n");
+	printf("this is a part HCI Tool ver 5.46\n");
 	printf("Usage:\n"
 		"\tbt-scan [options]\n");
 	printf("Options:\n"
@@ -240,7 +189,7 @@ int main(int argc, char *argv[]) {
 	
 	int ctl, opt, i, dev_id = -1;
 	static struct hci_dev_info di;
-//надо посмотреть	
+
 	while ((opt=getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
 		switch (opt) {
 		case 'i':
@@ -257,7 +206,7 @@ int main(int argc, char *argv[]) {
 			exit(0);
 		}
 	}
-//.	
+	
 	if ((ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		perror("Can't open HCI socket.");
 		exit(1);
