@@ -7,7 +7,7 @@ prefix = /usr
 bindir = ${prefix}/bin
 sbindir = ${prefix}/sbin
 datarootdir = ${prefix}/share
-libdir = ${prefix}/lib
+libdir = /lib
 sysconfdir = /etc
 
 all:
@@ -16,10 +16,14 @@ all:
 	
 install:
 	$(INSTALL) -D -m 755 bluez-tray $(DESTDIR)$(bindir)/bluez-tray
+	$(STRIP) $(DESTDIR)$(bindir)/bluez-tray
 	$(INSTALL) -D -m 755 bt-scan $(DESTDIR)$(bindir)/bt-scan
+	$(STRIP) $(DESTDIR)$(bindir)/bt-scan
 	
-	$(INSTALL) -d $(DESTDIR)$(datarootdir)/
+	$(INSTALL) -D -m 644 bluez-tray.mo $(DESTDIR)$(datarootdir)/locale/ru/LC_MESSAGES/bluez-tray.mo
 	cp -a pixmaps/ $(DESTDIR)$(datarootdir)/
-	
+	$(INSTALL) -D -m 755 bluez.sh $(DESTDIR)$(libdir)/udev/bluez.sh
+	$(INSTALL) -D -m 644 97-bluetooth.rules $(DESTDIR)$(libdir)/udev/rules.d/97-bluetooth.rules
+
 clean:
 	rm bluez-tray bt-scan
