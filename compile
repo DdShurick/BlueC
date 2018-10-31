@@ -1,1 +1,0 @@
-gcc `pkg-config --cflags --libs gtk+-2.0` bluec.c -o bluec

@@ -17,7 +17,7 @@ msgstr "\n Блокирован аппаратно \n"
 msgid "\n Blocked software \n"
 msgstr "\n Блокирован программно \n"
 
-msgid "About the program"
+msgid "About program"
 msgstr "О программе"
 
 msgid "Disable the visibility"

@@ -12,7 +12,7 @@ Bluez-tray GPL v2, DdShutick 18.05.2016 */
 #include <gdk/gdk.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-/* bluez-5.46_DEV */
+/* bluez-5.50_DEV */
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -23,7 +23,7 @@ GtkStatusIcon *tray_icon;
 unsigned int interval = 1000; /*update interval in milliseconds*/
 FILE *fp;
 char statefile[42], hardfile[42], softfile[42], *btdev, *st, infomsg[72], cmd[33], label_on[24], label_off[24];
-int state, ctl, hdev;
+int state, ctl, hdev, i = 0;
 static struct hci_dev_info di;
 
 gboolean Update(gpointer ptr) {
@@ -47,20 +47,23 @@ gboolean Update(gpointer ptr) {
 		perror("Can't get device info");
 		exit(1);
 	}
-	ba2str(&di.bdaddr, addr); 
+	ba2str(&di.bdaddr, addr); //
 	st = hci_dflagstostr(di.flags);
 	infomsg[0]=0;
 	strcat(infomsg,"  BTdevice:  ");
 	strcat(infomsg,di.name);
 	
 /* update icon...*/
-//    if (gtk_status_icon_get_blinking(tray_icon)==TRUE) gtk_status_icon_set_blinking(tray_icon,FALSE);
-	
+/* -> */
+	if (gtk_status_icon_get_blinking(tray_icon)==TRUE) {
+		
+		exit(1);
+		} /* <- */
 	if (state=='0') {
 		gtk_status_icon_set_from_file(tray_icon,"/usr/share/pixmaps/bluetooth_off.png");
 		
 /*check status bluetooth blocked*/
-		
+
 		if ((fp = fopen(hardfile,"r"))==NULL) {
 			perror("Can't open hardfile");
 			exit(1);
@@ -83,9 +86,9 @@ gboolean Update(gpointer ptr) {
 			gtk_status_icon_set_from_file(tray_icon,"/usr/share/pixmaps/bluetooth.png");
 		}
 
-	strcat(infomsg,"\n");
-	strcat(infomsg,addr);
 	strcat(infomsg,"\n ");
+	strcat(infomsg,addr);
+	strcat(infomsg," \n ");
 	strcat(infomsg,st);
 	
 	}
@@ -172,9 +175,8 @@ void btdevup() {
 	if (ioctl(ctl, HCIDEVUP, hdev) < 0) {
 		if (errno == EALREADY)
 		return;
-		fprintf(stderr, "Can't init device hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
-		exit(1);
+		gtk_status_icon_set_blinking(tray_icon,TRUE); /* */
+		fprintf(stderr, "Can't init device hci%d: %s (%d)\n", hdev, strerror(errno), errno);
 	}
 }
 
@@ -185,7 +187,7 @@ void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 		perror("Can't open softfile");
 		exit(1);
 	}
-	if (fgetc(fp)=='1') system("/usr/sbin/rfkill unblock bluetooth");
+	if (fgetc(fp)=='1') system("/usr/sbin/rfkill unblock bluetooth"); /* */
 	fclose(fp);
 	btdevup();
 }
@@ -193,14 +195,16 @@ void  view_popup_menu_Connect (GtkWidget *menuitem, gpointer userdata)
 void tray_icon_on_click(GtkStatusIcon *status_icon, gpointer user_data)
 {	
 	if (strstr(st,"DOWN")) btdevup();
-	if ((system("/usr/local/bin/defaultbtmanager &")) == 0) system(cmd);
+	if (gtk_status_icon_get_blinking(tray_icon)==FALSE) {
+		if ((system("/usr/local/bin/defaultbtmanager &")) == 0) system(cmd);
+	}
 }
 
 void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_time, gpointer user_data)
 {
 	GtkWidget *menu, *menuitem;
     menu = gtk_menu_new();
-    menuitem = gtk_menu_item_new_with_label(_("About the program")); //"О программе"
+    menuitem = gtk_menu_item_new_with_label(_("About program")); //"О программе"
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_About, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     if (strstr(st,"UP")) {
@@ -245,57 +249,6 @@ static GtkStatusIcon *create_tray_icon() {
     return tray_icon;
 }
 
-void *bt_malloc(size_t size)
-{
-	return malloc(size);
-}
-/*
-typedef struct {
-	char *str;
-	unsigned int val;
-} hci_map;
-/* HCI dev flags mapping *//*
-static hci_map dev_flags_map[] = {
-	{ "UP",      HCI_UP      },
-	{ "INIT",    HCI_INIT    },
-	{ "RUNNING", HCI_RUNNING },
-	{ "RAW",     HCI_RAW     },
-	{ "PSCAN",   HCI_PSCAN   },
-	{ "ISCAN",   HCI_ISCAN   },
-	{ "INQUIRY", HCI_INQUIRY },
-	{ "AUTH",    HCI_AUTH    },
-	{ "ENCRYPT", HCI_ENCRYPT },
-	{ NULL }
-};
-
-char *hci_dflagstostr(uint32_t flags)
-{
-	char *str = bt_malloc(50);
-	char *ptr = str;
-	hci_map *m = dev_flags_map;
-
-	if (!str)
-		return NULL;
-
-	*ptr = 0;
-
-	if (!hci_test_bit(HCI_UP, &flags))
-		ptr += sprintf(ptr, "DOWN ");
-
-	while (m->str) {
-		if (hci_test_bit(m->val, &flags))
-			ptr += sprintf(ptr, "%s ", m->str);
-		m++;
-	}
-	return str;
-}
-
-int ba2str(const bdaddr_t *ba, char *str)
-{
-	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-		ba->b[5], ba->b[4], ba->b[3], ba->b[2], ba->b[1], ba->b[0]);
-}
-*/
 int main(int argc, char **argv) {
 	 
 	if (argc != 3) {
