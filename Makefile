@@ -1,7 +1,3 @@
-
-SOURCES= bluez-tray.c -lbluetooth
-bluez-tray : $(SOURCES)
-	$(CC) -o $@ $(SOURCES) $(FLAGS) $(LIBS)
 CC=gcc -std=c99
 FLAGS := $(shell pkg-config --cflags gtk+-2.0)
 LIBS := $(shell pkg-config --libs gtk+-2.0)
@@ -15,8 +11,8 @@ libdir = ${prefix}/lib
 sysconfdir = /etc
 
 all:
-	$(CC) -o bluez-tray src/bluez-tray.c $(FLAGS) $(LIBS)
-	$(CC) -o bt-scan src/bt-scan.c $(FLAGS) $(LIBS)
+	$(CC) -o bluez-tray src/bluez-tray.c -lbluetooth $(FLAGS) $(LIBS)
+	$(CC) -o bt-scan src/bt-scan.c -lbluetooth
 	
 install:
 	$(INSTALL) -D -m 755 bluez-tray $(DESTDIR)$(bindir)/bluez-tray
