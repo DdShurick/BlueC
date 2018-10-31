@@ -1,1 +1,10 @@
-* * * На основе bluez-5.50 * * *
+* * * Based on bluez-5.50 * * *
+In order to compile you need following software packages:
+	- Bluez-5.50_DEV
+	
+Check and edit () Makefile
+To compile and install run:
+	make 
+	make install
+or to build the package
+	make DESTDIR=/full_path/your_dir install
