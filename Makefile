@@ -13,12 +13,15 @@ sysconfdir = /etc
 all:
 	$(CC) -o bluez-tray src/bluez-tray.c -lbluetooth $(FLAGS) $(LIBS)
 	$(CC) -o bt-scan src/bt-scan.c -lbluetooth
+	(CC) -o bt-browse src/bt-browse.c -lbluetooth
 	
 install:
 	$(INSTALL) -D -m 755 bluez-tray $(DESTDIR)$(bindir)/bluez-tray
 	$(STRIP) $(DESTDIR)$(bindir)/bluez-tray
 	$(INSTALL) -D -m 755 bt-scan $(DESTDIR)$(bindir)/bt-scan
 	$(STRIP) $(DESTDIR)$(bindir)/bt-scan
+	$(INSTALL) -D -m 755 bt-browse $(DESTDIR)$(bindir)/bt-browse
+	$(STRIP) $(DESTDIR)$(bindir)/bt-browse
 	
 	$(INSTALL) -D -m 644 bluez-tray.mo $(DESTDIR)$(datarootdir)/locale/ru/LC_MESSAGES/bluez-tray.mo
 	cp -a pixmaps/ $(DESTDIR)$(datarootdir)/
