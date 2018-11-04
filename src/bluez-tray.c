@@ -208,9 +208,6 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
     g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_About, status_icon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     if (strstr(st,"UP")) {
-		menuitem = gtk_menu_item_new_with_label(label_off);
-		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Disconnect, status_icon);
-    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
     	if (strstr(st,"SCAN")) {
 			menuitem = gtk_menu_item_new_with_label(_("Disable visibility")); //"Отключить видимость"
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onNoscan, status_icon);
@@ -227,6 +224,9 @@ void tray_icon_on_menu(GtkStatusIcon *status_icon, guint button, guint activate_
 			g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_onIscan, status_icon);
     		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		}
+		menuitem = gtk_menu_item_new_with_label(label_off);
+		g_signal_connect(menuitem, "activate", (GCallback) view_popup_menu_Disconnect, status_icon);
+    	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	} 
     if (strstr(st,"DOWN")) {
 		menuitem = gtk_menu_item_new_with_label(label_on);

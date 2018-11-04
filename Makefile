@@ -13,7 +13,7 @@ sysconfdir = /etc
 all:
 	$(CC) -o bluez-tray src/bluez-tray.c -lbluetooth $(FLAGS) $(LIBS)
 	$(CC) -o bt-scan src/bt-scan.c -lbluetooth
-	(CC) -o bt-browse src/bt-browse.c -lbluetooth
+	$(CC) -o bt-browse src/bt-browse.c -lbluetooth
 	
 install:
 	$(INSTALL) -D -m 755 bluez-tray $(DESTDIR)$(bindir)/bluez-tray
@@ -29,4 +29,4 @@ install:
 	$(INSTALL) -D -m 644 97-bluetooth.rules $(DESTDIR)$(libdir)/udev/rules.d/97-bluetooth.rules
 
 clean:
-	rm bluez-tray bt-scan
+	rm bluez-tray bt-scan bt-browse

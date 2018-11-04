@@ -135,9 +135,10 @@ int main(int argc, char *argv[]) {
 	}
 	
 	if (ioctl(ctl, HCIDEVUP, dev_id) < 0) {
-		if (errno != EALREADY)
+		if (errno != EALREADY) {
 			fprintf(stderr, "Can't init device hci%d: %s (%d)\n", dev_id, strerror(errno), errno);
 			exit(1);
+		}
 	}
 	
 	if (ioctl(ctl, HCIGETDEVINFO, (void *) &di) < 0) {

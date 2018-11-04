@@ -146,7 +146,7 @@ static void usage(void) {
 	
 	printf("bt-browse - part of sdptool v5.50\n");
 	printf("Usage:\n"
-		"\tbt-browse [-i hci0] [bdaddr]\n");
+		"\tbt-browse [-i hci0] <bdaddr>\n");
 	printf("Options:\n"
 		"\t-h\t\tDisplay help\n"
 		"\t-i\t\tSpecify source interface\n");
