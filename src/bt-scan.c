@@ -14,11 +14,24 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-FILE	*fd;
-
 #define ENT(e) (sizeof(e)/sizeof(char*))
+
 static char *majors[] = {"Misc", "Computer", "Phone", "Net Access", "Audio/Video",\
                         "Peripheral", "Imaging", "Wearable", "Toy"};
+
+/* Decode device class */
+ 
+static void classinfo(uint8_t dev_class[3]) {
+	
+	int major = dev_class[1];
+	
+	if (major > ENT(majors)) {
+		if (major == 63)
+			printf(" Unclassified device\n");
+		return;
+	}
+	printf("\"%s\"\n", majors[major]);
+}
 
 static void cmd_scan(int dev_id, int argc, char **argv)
 {
@@ -34,13 +47,11 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	num_rsp = 0;
 	flags   = 0;
 
-//	if (dev_id < 0) {
-		dev_id = hci_get_route(NULL);
-		if (dev_id < 0) {
-			perror("Device is not available");
-			exit(1);
-		}
-//	}
+	dev_id = hci_get_route(NULL);
+	if (dev_id < 0) {
+		perror("Device is not available");
+		exit(1);
+	}
 
 	if (hci_devinfo(dev_id, &di) < 0) {
 		perror("Can't get device info");
@@ -61,10 +72,6 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	if ((fd = fopen("/tmp/btscan.lst","w"))==NULL) {
-		perror("Can't open");
-		exit(1);
-	} 
 	for (i = 0; i < num_rsp; i++) {
 		uint16_t handle = 0;
 
@@ -82,18 +89,17 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		}
 
 		name[248] = '\0';
-		fprintf(fd,"%s \"%s\"\n", addr, name);
-		printf("%s \"%s\"\n", addr, name);
-//		system("");
+		printf("%s \"%s\" ", addr, name);
+		classinfo((info+i)->dev_class);
 		continue;
+//		system("");		
 	}
-	fclose(fd);
 }
 
 static void usage(void)
 {
 	printf("bt-scan - scan remote bluetooth device\n");
-	printf("this is a part HCI Tool ver 5.46\n");
+	printf("this is a part HCI Tool ver 5.50\n");
 	printf("Usage:\n"
 		"\tbt-scan [options]\n");
 	printf("Options:\n"
