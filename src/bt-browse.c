@@ -13,6 +13,15 @@
 #include <bluetooth/hci_lib.h>
 #include "bluetooth/sdp.h"
 #include "bluetooth/sdp_lib.h"
+/* 
+#ifndef APPLE_AGENT_SVCLASS_ID
+#define APPLE_AGENT_SVCLASS_ID 0x2112
+#endif
+*/
+FILE	*fi;
+#define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, 0)) != -1)
+#define N_ELEMENTS(x) (sizeof(x) / sizeof((x)[0]))
+#define DEFAULT_VIEW 0	/* Display only known attribute */
 
 /* Pass args to the inquiry/search handler */
 struct search_context {
@@ -23,9 +32,49 @@ struct search_context {
 };
 
 typedef int (*handler_t)(bdaddr_t *bdaddr, struct search_context *arg);
-
+int	st;
 static char UUID_str[MAX_LEN_UUID_STR];
 static bdaddr_t interface;
+
+/* Definition of attribute members */
+struct member_def {
+	char *name;
+};
+
+/* Definition of an attribute */
+struct attrib_def {
+	int			num;		/* Numeric ID - 16 bits */
+	char			*name;		/* User readable name */
+	struct member_def	*members;	/* Definition of attribute args */
+	int			member_max;	/* Max of attribute arg definitions */
+};
+
+/* Definition of a service or protocol */
+struct uuid_def {
+	int			num;		/* Numeric ID - 16 bits */
+	char			*name;		/* User readable name */
+	struct attrib_def	*attribs;	/* Specific attribute definitions */
+	int			attrib_max;	/* Max of attribute definitions */
+};
+
+/* Context information about current attribute */
+struct attrib_context {
+	struct uuid_def		*service;	/* Service UUID, if known */
+	struct attrib_def	*attrib;	/* Description of the attribute */
+	int			member_index;	/* Index of current attribute member */
+};
+
+/* Context information about the whole service */
+struct service_context {
+	struct uuid_def		*service;	/* Service UUID, if known */
+};
+
+/* Allow us to do nice formatting of the lists */
+static char *indent_spaces = "                                         ";
+
+#define SERVICE_ATTR	0x1
+
+//static const int uuid16_max = N_ELEMENTS(uuid16_names);
 
 static void print_service_class(void *value, void *userData)
 {
@@ -34,30 +83,80 @@ static void print_service_class(void *value, void *userData)
 
 	sdp_uuid2strn(uuid, UUID_str, MAX_LEN_UUID_STR);
 	sdp_svclass_uuid2strn(uuid, ServiceClassUUID_str, MAX_LEN_SERVICECLASS_UUID_STR);
-	if (uuid->type != SDP_UUID128)
-		printf("  \"%s\" (0x%s)\n", ServiceClassUUID_str, UUID_str);
-	else
-		printf("  UUID 128: %s\n", UUID_str);
+	if (st == 1) {
+		if (uuid->type != SDP_UUID128) {
+			printf("\"%s\" %s\n", ServiceClassUUID_str, UUID_str); //
+			fprintf(fi, "%s\n", UUID_str);
+			st = 0;
+		}
+		else {
+			printf("UUID 128: %s\n", UUID_str);
+			fprintf(fi, "UUID 128: %s\n", UUID_str);
+		}
+	}	
 }
 
-/*
- * Parse a SDP record in user friendly form.
- */
+static void print_service_desc(void *value, void *user)
+{
+	char str[MAX_LEN_PROTOCOL_UUID_STR];
+	sdp_data_t *p = (sdp_data_t *)value, *s;
+	int i = 0, proto = 0;
+
+	for (; p; p = p->next, i++) {
+		switch (p->dtd) {
+		case SDP_UUID16:
+		case SDP_UUID32:
+		case SDP_UUID128:
+			sdp_uuid2strn(&p->val.uuid, UUID_str, MAX_LEN_UUID_STR);
+			sdp_proto_uuid2strn(&p->val.uuid, str, sizeof(str));
+			proto = sdp_uuid_to_proto(&p->val.uuid);
+//			printf("  \"%s\" (0x%s)\n", str, UUID_str);
+			break;
+		case SDP_UINT8:
+			if (proto == RFCOMM_UUID) {
+				printf("Channel %d ", p->val.uint8);
+				fprintf(fi, "%d ", p->val.uint8);
+				st = 1;
+				}
+			else {
+				printf("uint8: 0x%02x ", p->val.uint8);
+				fprintf(fi, "uint8: 0x%02x ", p->val.uint8);
+				}
+			break;
+		case SDP_UINT16:
+		default:
+			st = 0;
+			break;
+		}
+	}
+}
+
+static void print_access_protos(void *value, void *userData)
+{
+	sdp_list_t *protDescSeq = (sdp_list_t *)value;
+	sdp_list_foreach(protDescSeq, print_service_desc, 0);
+}
+
+
+ /* Parse a SDP record in user friendly form.*/
+ 
 static void print_service_attr(sdp_record_t *rec)
 {
 	sdp_list_t *list = 0, *proto = 0;
-
+	
+	if (sdp_get_access_protos(rec, &proto) == 0) {
+		sdp_list_foreach(proto, print_access_protos, 0);
+		sdp_list_foreach(proto, (sdp_list_func_t)sdp_list_free, 0);
+		sdp_list_free(proto, 0);
+	}
 	if (sdp_get_service_classes(rec, &list) == 0) {
-//		printf("Service Class ID List:\n");
 		sdp_list_foreach(list, print_service_class, 0);
 		sdp_list_free(list, free);
 	}
 }
 
-/*
- * Perform an inquiry and search/browse all peer found.
- */
- 
+/* Perform an inquiry and search/browse all peer found. */
+
 typedef int (*handler_t)(bdaddr_t *bdaddr, struct search_context *arg);
 
 static char UUID_str[MAX_LEN_UUID_STR];
@@ -69,9 +168,9 @@ static void inquiry(handler_t handler, void *arg)
 	uint8_t count = 0;
 	int i;
 
-	printf("Inquiring ...\n");
+	fprintf(stderr,"Inquiring ...\n");
 	if (sdp_general_inquiry(ii, 20, 8, &count) < 0) {
-		printf("Inquiry failed\n");
+		fprintf(stderr,"Inquiry failed\n");
 		return;
 	}
 
@@ -79,16 +178,15 @@ static void inquiry(handler_t handler, void *arg)
 		handler(&ii[i].bdaddr, arg);
 }
 
-/*
- * Search for a specific SDP service
- */
+ /* Search for a specific SDP service */
+
 static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 {
 	sdp_list_t *attrid, *search, *seq, *next;
 	uint32_t range = 0x0000ffff;
-	char str[20];
+	char str[20], file[35] = "/tmp/";
 	sdp_session_t *sess;
-
+	
 	if (!bdaddr) {
 		inquiry(do_search, context);
 		return 0;
@@ -97,19 +195,19 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 	sess = sdp_connect(&interface, bdaddr, SDP_RETRY_IF_BUSY);
 	ba2str(bdaddr, str);
 	if (!sess) {
-		printf("Failed to connect to SDP server on %s: %s\n", str, strerror(errno));
+		fprintf(stderr,"Failed to connect to SDP server on %s: %s\n", str, strerror(errno));
 		return -1;
 	}
 	
 	if (context->svc)
-		printf("Searching for %s on %s ...\n", context->svc, str);
+		fprintf(stderr,"Searching for %s on %s ...\n", context->svc, str);
 	else
-		printf("Browsing %s ...\n", str);
+		fprintf(stderr,"Browsing %s ...\n", str);
 
 	attrid = sdp_list_append(0, &range);
 	search = sdp_list_append(0, &context->group);
 	if (sdp_service_search_attr_req(sess, search, SDP_ATTR_REQ_RANGE, attrid, &seq)) {
-		printf("Service Search failed: %s\n", strerror(errno));
+		fprintf(stderr,"Service Search failed: %s\n", strerror(errno));
 		sdp_list_free(attrid, 0);
 		sdp_list_free(search, 0);
 		sdp_close(sess);
@@ -118,13 +216,16 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 	sdp_list_free(attrid, 0);
 	sdp_list_free(search, 0);
 
+	strcat(file, str);
+	strcat(file,".info.lst");
+	fi = fopen(file, "w");
+
 	for (; seq; seq = next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
 		struct search_context sub_context;
-
+		
 		print_service_attr(rec);
-//		printf("\n");
-
+		
 		/* Set the subcontext for browsing the sub tree */
 		memcpy(&sub_context, context, sizeof(struct search_context));
 
@@ -137,19 +238,22 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 		free(seq);
 		sdp_record_free(rec);
 	}
-
+	
+	fclose(fi);
 	sdp_close(sess);
 	return 0;
 }
 
 static void usage(void) {
 	
+
 	printf("bt-browse - part of sdptool v5.50\n");
 	printf("Usage:\n"
-		"\tbt-browse [-i hci0] <bdaddr>\n");
+		"\tbt-browse [-i hci0] [bdaddr]\n");
 	printf("Options:\n"
 		"\t-h\t\tDisplay help\n"
-		"\t-i\t\tSpecify source interface\n");
+		"\t-i\t\tSpecify source interface\n"
+		"\tif no bdaddr, browse all.\n");
 
 }
 
@@ -200,6 +304,5 @@ int main(int argc, char *argv[])
 	}
 	else
 	do_search(NULL, &context);
-	
 	return 0;
 }
