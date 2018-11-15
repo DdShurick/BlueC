@@ -14,6 +14,8 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+FILE	*fd;
+
 #define ENT(e) (sizeof(e)/sizeof(char*))
 
 static char *majors[] = {"Misc", "Computer", "Phone", "Net Access", "Audio/Video",\
@@ -72,6 +74,11 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
+	if ((fd = fopen("/tmp/btscan.lst","w"))==NULL) {
+		perror("Can't open");
+		exit(1);
+	}
+	
 	for (i = 0; i < num_rsp; i++) {
 		uint16_t handle = 0;
 
@@ -90,10 +97,11 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 
 		name[248] = '\0';
 		printf("%s \"%s\" ", addr, name);
+		fprintf(fd,"%s \"%s\"\n", addr, name);
 		classinfo((info+i)->dev_class);
-		continue;
-//		system("");		
+		continue;	
 	}
+	fclose(fd);
 }
 
 static void usage(void)
