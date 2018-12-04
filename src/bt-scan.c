@@ -96,8 +96,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		}
 
 		name[248] = '\0';
-		printf("%s \"%s\" ", addr, name);
-		fprintf(fd,"%s \"%s\"\n", addr, name);
+		printf("%s \"%s\" %d ", addr, name, dev_id);
+		fprintf(fd,"%s %s\n", addr, name);
 		classinfo((info+i)->dev_class);
 		continue;	
 	}
