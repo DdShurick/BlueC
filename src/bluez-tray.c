@@ -23,7 +23,7 @@ GtkStatusIcon *tray_icon;
 unsigned int interval = 1000; /*update interval in milliseconds*/
 FILE *fp;
 char statefile[42], hardfile[42], softfile[42], *btdev, *st, infomsg[72], cmd[33], label_on[24], label_off[24];
-int state, ctl, hdev, i = 0;
+int state, ctl, dev_id, i = 0;
 static struct hci_dev_info di;
 
 gboolean Update(gpointer ptr) {
@@ -43,6 +43,7 @@ gboolean Update(gpointer ptr) {
 /* Infomsg */
 
 	/* Get device info */
+	di.dev_id = dev_id; //??
 	if (ioctl(ctl, HCIGETDEVINFO, (void *) &di)) {
 		perror("Can't get device info");
 		exit(1);
@@ -98,11 +99,11 @@ gboolean Update(gpointer ptr) {
 	return TRUE;
 }
 
-static void cmd_scan(int ctl, int hdev, char *opt)
+static void cmd_scan(int ctl, int dev_id, char *opt)
 {
 	struct hci_dev_req dr;
 
-	dr.dev_id  = hdev;
+	dr.dev_id  = dev_id;
 	if (!strcmp(opt, "noscan"))
 		dr.dev_opt = SCAN_DISABLED;
 	else if (!strcmp(opt, "iscan"))
@@ -114,29 +115,29 @@ static void cmd_scan(int ctl, int hdev, char *opt)
 	
 	if (ioctl(ctl, HCISETSCAN, (unsigned long) &dr) < 0) {
 		fprintf(stderr, "Can't set scan mode on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
+						dev_id, strerror(errno), errno);
 		exit(1);
 	}
 }
 
 void  view_popup_menu_onIscan (GtkWidget *menuitem, gpointer userdata)
 	{
-		cmd_scan(ctl, hdev, "iscan");
+		cmd_scan(ctl, dev_id, "iscan");
 	}
 
 void  view_popup_menu_onPscan (GtkWidget *menuitem, gpointer userdata)
 	{
-		cmd_scan(ctl, hdev, "pscan");
+		cmd_scan(ctl, dev_id, "pscan");
 	}
 
 void  view_popup_menu_onPiscan (GtkWidget *menuitem, gpointer userdata)
 	{
-		cmd_scan(ctl, hdev, "piscan");
+		cmd_scan(ctl, dev_id, "piscan");
 	}
 
 void  view_popup_menu_onNoscan (GtkWidget *menuitem, gpointer userdata)
 	{
-		cmd_scan(ctl, hdev, "noscan");
+		cmd_scan(ctl, dev_id, "noscan");
 	}
 
 void  view_popup_menu_About (GtkWidget *menuitem, gpointer userdata)
@@ -163,20 +164,20 @@ void  view_popup_menu_About (GtkWidget *menuitem, gpointer userdata)
 void  view_popup_menu_Disconnect (GtkWidget *menuitem, gpointer userdata)
 	{ 
 /* Stop HCI device */
-		if (ioctl(ctl, HCIDEVDOWN, hdev) < 0) {
+		if (ioctl(ctl, HCIDEVDOWN, dev_id) < 0) {
 			fprintf(stderr, "Can't down device hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
+						dev_id, strerror(errno), errno);
 			exit(1);
 		}
     }
 
 void btdevup() {
 /* Start HCI device */
-	if (ioctl(ctl, HCIDEVUP, hdev) < 0) {
+	if (ioctl(ctl, HCIDEVUP, dev_id) < 0) {
 		if (errno == EALREADY)
 		return;
 		gtk_status_icon_set_blinking(tray_icon,TRUE); /* */
-		fprintf(stderr, "Can't init device hci%d: %s (%d)\n", hdev, strerror(errno), errno);
+		fprintf(stderr, "Can't init device hci%d: %s (%d)\n", dev_id, strerror(errno), errno);
 	}
 }
 
@@ -257,7 +258,7 @@ int main(int argc, char **argv) {
 	}
 	gtk_init(&argc, &argv);
 	btdev = argv[1];
-	hdev = atoi(btdev + 3);
+	dev_id = atoi(btdev + 3);
 	
 	hardfile[0]=0;
 	strcat(hardfile,"/sys/class/bluetooth/");
